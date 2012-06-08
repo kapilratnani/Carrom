@@ -1,22 +1,29 @@
 package net.ripper.carrom.managers;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import android.graphics.Rect;
-import android.util.Log;
-
-import net.ripper.carrom.model.Board;
+import net.ripper.carrom.managers.clients.IPhysicsManagerClient;
+import net.ripper.carrom.managers.physics.collisionResolver.CustomCollisionResolver;
 import net.ripper.carrom.model.CollisionPair;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.util.UtilityFunctions;
+import android.graphics.Rect;
+import android.util.Log;
 
 public class PhysicsManager {
 	private static final String TAG = PhysicsManager.class.getSimpleName();
 	List<Piece> pieces = null;
 	List<CollisionPair> lastCollisionList;
 	Rect boundsRect;
+	List<IPhysicsManagerClient> clients;
+
+	Map<Piece, CustomCollisionResolver> customCollisionResolversMap;
+
+	boolean paused = true;
 
 	public final float DAMPING = 0.985f;
 
@@ -26,6 +33,37 @@ public class PhysicsManager {
 		this.boundsRect = boundsRect;
 		pieces = new ArrayList<Piece>();
 		lastCollisionList = new ArrayList<CollisionPair>();
+		clients = new ArrayList<IPhysicsManagerClient>();
+		customCollisionResolversMap = new HashMap<Piece, CustomCollisionResolver>();
+	}
+
+	public void registerClient(IPhysicsManagerClient client) {
+		clients.add(client);
+	}
+
+	private void motionStoppedNotifyClients() {
+		for (IPhysicsManagerClient client : clients) {
+			client.allMotionStopped(lastCollisionList);
+		}
+	}
+
+	public List<CollisionPair> getLastCollisionList() {
+		return lastCollisionList;
+	}
+
+	public void setLastCollisionList(List<CollisionPair> lastCollisionList) {
+		this.lastCollisionList = lastCollisionList;
+	}
+
+	public boolean isPaused() {
+		return paused;
+	}
+
+	public void setPaused(boolean paused) {
+		this.paused = paused;
+		if (!paused) {
+			lastCollisionList.clear();
+		}
 	}
 
 	public void addPiece(Piece piece) {
@@ -36,22 +74,51 @@ public class PhysicsManager {
 		pieces.remove(piece);
 	}
 
+	public void addCustomCollisionResolverForPiece(Piece piece,
+			CustomCollisionResolver collisionResolver) {
+		customCollisionResolversMap.put(piece, collisionResolver);
+		pieces.add(piece);
+	}
+
 	public float update() {
 		Piece pieceA, pieceB;
-		for (int i = 0; i < pieces.size(); i++) {
-			pieceA = pieces.get(i);
-			for (int j = i + 1; j < pieces.size(); j++) {
-				pieceB = pieces.get(j);
-				if (movingTowards(pieceA, pieceB)
-						&& isColliding(pieceA, pieceB)) {
-					resolveCollision(pieceA, pieceB);
+		float nextCollisionTime = 1;
+		if (!paused) {
+			for (int i = 0; i < pieces.size(); i++) {
+				pieceA = pieces.get(i);
+				for (int j = i + 1; j < pieces.size(); j++) {
+					pieceB = pieces.get(j);
+					if (movingTowards(pieceA, pieceB)
+							&& isColliding(pieceA, pieceB)) {
+
+						if (customCollisionResolversMap.containsKey(pieceA)) {
+							customCollisionResolversMap.get(pieceA)
+									.resolveCollision(pieceA, pieceB);
+						} else if (customCollisionResolversMap
+								.containsKey(pieceB)) {
+							customCollisionResolversMap.get(pieceB)
+									.resolveCollision(pieceA, pieceB);
+						} else {
+							// Default collision resolver
+							resolveCollisionByPConservation(pieceA, pieceB);
+						}
+
+						lastCollisionList
+								.add(new CollisionPair(pieceA, pieceB));
+					}
 				}
 			}
-		}
 
-		float nextCollisionTime = getNextCollisionTime();
-		for (Piece piece : pieces) {
-			updatePiece(piece, nextCollisionTime);
+			nextCollisionTime = getNextCollisionTime();
+			boolean moving = false;
+			for (Piece piece : pieces) {
+				moving = moving | updatePiece(piece, nextCollisionTime);
+			}
+
+			if (!moving) {
+				// notify client
+				motionStoppedNotifyClients();
+			}
 		}
 		return nextCollisionTime;
 	}
@@ -114,7 +181,13 @@ public class PhysicsManager {
 		// return pv.dot(rv) > 0;
 	}
 
-	private void resolveCollision(Piece a, Piece b) {
+	/**
+	 * Collision resolution using momentum conservation
+	 * 
+	 * @param a
+	 * @param b
+	 */
+	private void resolveCollisionByPConservation(Piece a, Piece b) {
 		// First, find the normalized vector n from the center of
 		// circle1 to the center of circle2
 		Vector2f n = new Vector2f(a.region.x - b.region.x, a.region.y
@@ -146,7 +219,13 @@ public class PhysicsManager {
 		b.velocity = vfb;
 	}
 
-	public void updatePiece(Piece piece, float nextCollisionTime) {
+	/**
+	 * 
+	 * @param piece
+	 * @param nextCollisionTime
+	 * @return true if the piece is still moving
+	 */
+	public boolean updatePiece(Piece piece, float nextCollisionTime) {
 		if (piece.velocity.x != 0 || piece.velocity.y != 0) {
 
 			piece.region.x = piece.region.x + piece.velocity.x
@@ -156,9 +235,9 @@ public class PhysicsManager {
 
 			piece.velocity.scale(DAMPING);
 
-			if (Math.floor(piece.velocity.x) == 0
-					&& Math.floor(piece.velocity.y) == 0) {
-				piece.velocity.scale(0);
+			if (((int) piece.velocity.x) == 0 && ((int) piece.velocity.y) == 0) {
+				piece.velocity.x = 0;
+				piece.velocity.y = 0;
 			}
 
 			// left and right wall
@@ -178,7 +257,10 @@ public class PhysicsManager {
 				piece.region.y = boundsRect.bottom - piece.region.radius;
 			}
 
+			//
+			return true;
 		}
+		return false;
 	}
 
 	public boolean isColliding(Piece pieceA, Piece pieceB) {
