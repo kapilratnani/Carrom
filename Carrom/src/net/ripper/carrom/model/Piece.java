@@ -20,7 +20,7 @@ public class Piece {
 	public int color = Color.BLACK;
 	public Board board;
 	public float mass = 0;
-	public boolean inHole = true;
+	public boolean inHole = false;
 
 	public enum PieceType {
 		BLACK, WHITE, STRIKER, QUEEN, HOLE

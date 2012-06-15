@@ -2,6 +2,7 @@ package net.ripper;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
@@ -22,6 +23,11 @@ public class CarromActivity extends Activity {
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		setContentView(new MainGamePanel(this));
-		Log.d(TAG, "Game Panel added");
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		//ignore config changes
+		super.onConfigurationChanged(newConfig);
 	}
 }

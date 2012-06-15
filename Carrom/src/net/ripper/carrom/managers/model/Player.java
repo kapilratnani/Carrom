@@ -6,6 +6,6 @@ public class Player {
 	public int id;
 	public PieceType pieceType;
 	public boolean scoredQueen;
-	public int numPottedPieces;
 	public int points;
+	public int shootingRectIndex;
 }

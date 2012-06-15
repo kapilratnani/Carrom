@@ -1,8 +1,10 @@
 package net.ripper;
 
+import net.ripper.carrom.ai.AIPlayerImpl;
 import net.ripper.carrom.managers.GameManager;
 import net.ripper.carrom.managers.GameManager.GameState;
 import net.ripper.carrom.managers.clients.IGameManagerClient;
+import net.ripper.carrom.managers.model.Player;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.components.PolarLine;
 import net.ripper.carrom.renderer.RenderThread;
@@ -15,6 +17,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
@@ -47,6 +51,8 @@ public class MainGamePanel extends SurfaceView implements
 
 	PolarLine guideLine;
 	Paint guidePaint;
+	Paint aiRectPaint;
+	AIPlayerImpl ai = new AIPlayerImpl();
 
 	public MainGamePanel(Context context) {
 		super(context);
@@ -79,8 +85,8 @@ public class MainGamePanel extends SurfaceView implements
 		fpsPaint.setARGB(255, 255, 255, 255);
 
 		guideLine = new PolarLine(
-				this.gameManager.board.shootingRect[2].centerX(),
-				this.gameManager.board.shootingRect[2].centerY(),
+				this.gameManager.board.shootingRect[0].centerX(),
+				this.gameManager.board.shootingRect[0].centerY(),
 				this.gameManager.board.boundsRect.height(),
 				(float) (235 * Math.PI / 180));
 
@@ -89,6 +95,9 @@ public class MainGamePanel extends SurfaceView implements
 		guidePaint.setAntiAlias(true);
 		guidePaint.setPathEffect(new DashPathEffect(new float[] { 10, 10 }, 0));
 
+		aiRectPaint = new Paint();
+		aiRectPaint.setColor(Color.WHITE);
+		aiRectPaint.setAntiAlias(true);
 	}
 
 	@Override
@@ -156,6 +165,18 @@ public class MainGamePanel extends SurfaceView implements
 			((Activity) this.getContext()).finish();
 		}
 
+		if (e.getX() > this.getWidth() - 50) {
+			ai.getShot(
+					this.gameManager.blackPieces,
+					this.gameManager.whitePieces,
+					this.gameManager.striker,
+					this.gameManager.queen,
+					this.gameManager.board,
+					this.gameManager.players[this.gameManager.currentPlayerIndex]);
+
+			Log.d(TAG, "called ai..");
+		}
+
 		// for (Piece piece : this.gameManager.blackPieces) {
 		// if (piece.region.isPointInCircle(e.getX(), e.getY())) {
 		// touchedPiece = piece;
@@ -219,6 +240,16 @@ public class MainGamePanel extends SurfaceView implements
 				|| gameManager.gameState == GameState.STRIKER_SHOT_POWER) {
 			drawGuide(canvas);
 		}
+
+		/** AI Visualization **/
+		// drawing rects made by ai
+		if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
+			if (ai.rects.size() > 0) {
+				for (int i = 0; i < 5; i++) {
+					canvas.drawRect(ai.rects.get(i), aiRectPaint);
+				}
+			}
+		}
 	}
 
 	public void drawGuide(Canvas canvas) {
@@ -267,6 +298,8 @@ public class MainGamePanel extends SurfaceView implements
 					Log.d(TAG, "State:" + this.gameManager.gameState.toString());
 				} else if (this.gameManager.gameState == GameState.STRIKER_SHOT_POWER) {
 					this.gameManager.gameState = GameState.STRIKER_AIMING;
+					this.guideLine.originX = this.gameManager.striker.region.x;
+					this.guideLine.originY = this.gameManager.striker.region.y;
 					Log.d(TAG, "State:" + this.gameManager.gameState.toString());
 				}
 			}
@@ -286,17 +319,34 @@ public class MainGamePanel extends SurfaceView implements
 				float chY = e2.getY() - guideLine.originY;
 				float theta = (float) Math.atan(chY / chX);
 
+				// check in which quadrant the point is
 				if (chX < 0 && chY >= 0) {
+					// 2nd quadrant
 					theta = theta + (float) Math.PI;
 				} else if (chX < 0 && chY < 0) {
+					// 3rd quadrant
 					theta = theta - (float) Math.PI;
 				}
+
 				guideLine.rotateTo(theta);
 			} else if (this.gameManager.gameState == GameState.STRIKER_POSITIONING) {
 				// TODO restrict striker movement within shooting rect
 				// TODO don't allow regions where a coin is present
-				this.gameManager.striker.region.x = e2.getX();
-				guideLine.originX = this.gameManager.striker.region.x;
+				boolean horizontal = true;
+				Player[] players = this.gameManager.players;
+				Rect currentShootingRect = this.gameManager.board.shootingRect[players[gameManager.currentPlayerIndex].shootingRectIndex];
+
+				if (currentShootingRect.width() < currentShootingRect.height()) {
+					horizontal = false;
+				}
+
+				if (horizontal) {
+					this.gameManager.striker.region.x = e2.getX();
+					guideLine.originX = this.gameManager.striker.region.x;
+				} else {
+					this.gameManager.striker.region.y = e2.getY();
+					guideLine.originY = this.gameManager.striker.region.y;
+				}
 			}
 
 			return true;
@@ -315,6 +365,9 @@ public class MainGamePanel extends SurfaceView implements
 			if (this.gameManager.striker.region.isPointInCircle(e.getX(),
 					e.getY())) {
 				if (this.gameManager.gameState == GameState.STRIKER_POSITIONING) {
+					this.guideLine.originX = this.gameManager.striker.region.x;
+					this.guideLine.originY = this.gameManager.striker.region.y;
+
 					this.gameManager.gameState = GameState.STRIKER_AIMING;
 					Log.d(TAG, "State:" + this.gameManager.gameState.toString());
 				} else if (this.gameManager.gameState == GameState.STRIKER_AIMING) {
@@ -333,6 +386,8 @@ public class MainGamePanel extends SurfaceView implements
 		// reset guide position as of now
 		this.guideLine.originX = this.gameManager.striker.region.x;
 		this.guideLine.originY = this.gameManager.striker.region.y;
+
+		this.invalidate();
 	}
 
 }

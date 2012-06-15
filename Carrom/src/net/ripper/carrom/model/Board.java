@@ -29,6 +29,11 @@ public class Board {
 	private final float BOARD_SIZE = 300;
 	private final float BOARD_OFFSET = 18;
 
+	private final int TOP_SHOOTING_RECT = 2;
+	private final int RIGHT_SHOOTING_RECT = 1;
+	private final int BOTTOM_SHOOTING_RECT = 0;
+	private final int LEFT_SHOOTING_RECT = 3;
+
 	private int posXOffset = 0;
 	private int posYOffset = 0;
 
@@ -66,18 +71,18 @@ public class Board {
 		// bottom 88,228,212.244
 		shootingRect = new Rect[4];
 		// top
-		shootingRect[0] = new Rect(posXOffset + 88, posYOffset + 56,
-				posXOffset + 212, posYOffset + 70);
+		shootingRect[TOP_SHOOTING_RECT] = new Rect(posXOffset + 88,
+				posYOffset + 56, posXOffset + 212, posYOffset + 70);
 
 		// right
-		shootingRect[1] = new Rect(posXOffset + 228, posYOffset + 86,
-				posXOffset + 243, posYOffset + 213);
+		shootingRect[RIGHT_SHOOTING_RECT] = new Rect(posXOffset + 228,
+				posYOffset + 86, posXOffset + 243, posYOffset + 213);
 		// bottom
-		shootingRect[2] = new Rect(posXOffset + 88, posYOffset + 228,
-				posXOffset + 212, posYOffset + 244);
+		shootingRect[BOTTOM_SHOOTING_RECT] = new Rect(posXOffset + 88,
+				posYOffset + 228, posXOffset + 212, posYOffset + 244);
 		// left
-		shootingRect[3] = new Rect(posXOffset + 56, posYOffset + 86,
-				posXOffset + 73, posYOffset + 213);
+		shootingRect[LEFT_SHOOTING_RECT] = new Rect(posXOffset + 56,
+				posYOffset + 86, posXOffset + 73, posYOffset + 213);
 
 		boundsRect = new Rect((int) (posXOffset + BOARD_OFFSET),
 				(int) (posYOffset + BOARD_OFFSET), (int) (BOARD_SIZE

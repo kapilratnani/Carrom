@@ -59,19 +59,66 @@ public class GameManager implements IPhysicsManagerClient,
 
 	private RuleManager ruleManager;
 	List<Piece> pottedPieces;
-	private int currentPlayerIndex = 0;
+	public int currentPlayerIndex = 0;
 
-	Player[] players;
+	public Player[] players;
 
-	private PointF[] blackPiecesInitPos = new PointF[] { new PointF(169, 139),
-			new PointF(152, 128), new PointF(139, 150), new PointF(157, 161),
-			new PointF(133, 160), new PointF(157, 139), new PointF(151, 171),
-			new PointF(132, 138), new PointF(169, 161) };
+	private void genInitPoints(Circle queenRegion) {
+		float r = queenRegion.radius;
+		float cX = queenRegion.x;
+		float cY = queenRegion.y;
 
-	private PointF[] whitePiecesInitPos = new PointF[] { new PointF(163, 149),
-			new PointF(145, 161), new PointF(144, 138), new PointF(174, 150),
-			new PointF(138, 170), new PointF(127, 149), new PointF(164, 129),
-			new PointF(139, 127), new PointF(163, 171) };
+		PointF[] c1 = new PointF[3];
+		PointF[] c2 = new PointF[4];
+		PointF[] c3 = new PointF[5];
+		PointF[] c4 = new PointF[4];
+		PointF[] c5 = new PointF[3];
+
+		float sX = cX - (float) Math.sqrt(3) * 2 * r;
+		float sY = cY - 2 * r;
+
+		for (int i = 0; i < c1.length; i++) {
+			c1[i] = new PointF(sX, sY);
+			sY = sY + 2 * r;
+		}
+
+		sX = (float) (cX - Math.sqrt(3) * r);
+		sY = (float) (cY - 3 * r);
+		for (int i = 0; i < c2.length; i++) {
+			c2[i] = new PointF(sX, sY);
+			sY = sY + 2 * r;
+		}
+
+		sX = cX;
+		sY = cY - 4 * r;
+		for (int i = 0; i < c3.length; i++) {
+			c3[i] = new PointF(sX, sY);
+			sY = sY + 2 * r;
+		}
+
+		sX = (float) (cX + Math.sqrt(3) * r);
+		sY = (float) (cY - 3 * r);
+		for (int i = 0; i < c2.length; i++) {
+			c4[i] = new PointF(sX, sY);
+			sY = sY + 2 * r;
+		}
+
+		sX = cX + (float) Math.sqrt(3) * 2 * r;
+		sY = cY - 2 * r;
+		for (int i = 0; i < c1.length; i++) {
+			c5[i] = new PointF(sX, sY);
+			sY = sY + 2 * r;
+		}
+
+		blackPiecesInitPos = new PointF[] { c1[1], c2[0], c2[2], c2[3], c3[1],
+				c4[0], c4[2], c4[3], c5[1] };
+		whitePiecesInitPos = new PointF[] { c1[0], c1[2], c2[1], c3[0], c3[3],
+				c3[4], c4[1], c5[0], c5[2] };
+	}
+
+	private PointF[] blackPiecesInitPos = null;
+
+	private PointF[] whitePiecesInitPos = null;
 
 	private Clock clock;
 
@@ -82,7 +129,6 @@ public class GameManager implements IPhysicsManagerClient,
 	public GameState gameState = GameState.STRIKER_POSITIONING;
 
 	public GameManager(int numPlayers) {
-		init();
 		clock = new Clock();
 		clients = new ArrayList<IGameManagerClient>();
 		pottedPieces = new ArrayList<Piece>();
@@ -90,9 +136,15 @@ public class GameManager implements IPhysicsManagerClient,
 		players = new Player[numPlayers];
 		for (int i = 0; i < numPlayers; i++) {
 			players[i] = new Player();
+			players[i].shootingRectIndex = i;
 		}
+		players[0].pieceType = PieceType.WHITE;
+		players[1].pieceType = PieceType.BLACK;
 
 		ruleManager = new ICFRuleManager(players);
+
+		init();
+
 	}
 
 	private void shotFinishedNotifyClients() {
@@ -107,8 +159,32 @@ public class GameManager implements IPhysicsManagerClient,
 
 	private void initPieces() {
 		// create pieces
+		queen = new Piece();
+		queen.id = 1;
+		queen.board = this.board;
+		queen.pieceType = PieceType.QUEEN;
+		queen.color = Color.RED;
+		queen.region = new Circle(CARROM_MEN_RADIUS, board.centerCircle.x,
+				board.centerCircle.y);
+		queen.velocity = new Vector2f(0, 0);
+		queen.mass = 5;
+
+		striker = new Piece();
+		striker.id = 1;
+		striker.board = board;
+		striker.pieceType = PieceType.STRIKER;
+		striker.color = Color.BLUE;
+		striker.region = new Circle(STRIKER_RADIUS,
+				board.shootingRect[this.players[0].shootingRectIndex]
+						.exactCenterX(),
+				board.shootingRect[this.players[0].shootingRectIndex]
+						.exactCenterY());
+		striker.velocity = new Vector2f(0, 0);
+		striker.mass = 10;
+
+		genInitPoints(queen.region);
+
 		blackPieces = new HashSet<Piece>();
-		Random rnd = new Random();
 		for (int i = 0; i < NUM_CARROM_MEN; i++) {
 			Piece piece = new Piece();
 			piece.id = i + 1;
@@ -135,27 +211,6 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.mass = 5;
 			whitePieces.add(piece);
 		}
-
-		queen = new Piece();
-		queen.id = 1;
-		queen.board = this.board;
-		queen.pieceType = PieceType.QUEEN;
-		queen.color = Color.RED;
-		queen.region = new Circle(CARROM_MEN_RADIUS, board.centerCircle.x,
-				board.centerCircle.y);
-		queen.velocity = new Vector2f(0, 0);
-		queen.mass = 5;
-
-		striker = new Piece();
-		striker.id = 1;
-		striker.board = board;
-		striker.pieceType = PieceType.STRIKER;
-		striker.color = Color.BLUE;
-		striker.region = new Circle(STRIKER_RADIUS,
-				board.shootingRect[2].exactCenterX(),
-				board.shootingRect[2].exactCenterY());
-		striker.velocity = new Vector2f(0, 0);
-		striker.mass = 10;
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
 		physicsMgr.addPiece(striker);
@@ -199,13 +254,28 @@ public class GameManager implements IPhysicsManagerClient,
 				pottedPieces, blackPieces, whitePieces, queen, striker);
 		// processResult
 
+		if (result.resultFlag == ruleManager.FOUL_POTTED_STRIKER) {
+			// collect dues
+			striker.inHole = false;
+			physicsMgr.addPiece(striker);
+		} else if (result.resultFlag == ruleManager.RESET_GAME) {
+			// reset board start a new game
+		} else if (result.resultFlag == ruleManager.WIN) {
+			// a player has won the game
+		}
+
+		Log.d(TAG, result.resultFlag + " black:" + result.black + " white:"
+				+ result.white + " next:" + result.nextPlayerIndex);
+
 		// clear potted Pieces
 		pottedPieces.clear();
 
 		// position striker to next players position
 		currentPlayerIndex = result.nextPlayerIndex;
-		this.striker.region.x = this.board.shootingRect[2].exactCenterX();
-		this.striker.region.y = this.board.shootingRect[2].exactCenterY();
+		this.striker.region.x = this.board.shootingRect[players[currentPlayerIndex].shootingRectIndex]
+				.exactCenterX();
+		this.striker.region.y = this.board.shootingRect[players[currentPlayerIndex].shootingRectIndex]
+				.exactCenterY();
 		shotFinishedNotifyClients();
 	}
 

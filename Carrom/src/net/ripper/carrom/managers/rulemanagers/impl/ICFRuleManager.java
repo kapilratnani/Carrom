@@ -1,5 +1,6 @@
 package net.ripper.carrom.managers.rulemanagers.impl;
 
+import java.util.Currency;
 import java.util.List;
 import java.util.Set;
 
@@ -30,9 +31,22 @@ public class ICFRuleManager extends RuleManager {
 	private int numCurrentWhitePieces = 0;
 	private boolean strikerPotted = false;
 	private boolean queenPotted = false;
+	private Player curPlayer;
+	private Piece queen;
+	private int currentPlayerIndex;
+	private int numMaxGames = 3;
+	private int numGameCount = 0;
 
 	public ICFRuleManager(Player[] players) {
 		super(players);
+	}
+
+	public int getNumGames() {
+		return numMaxGames;
+	}
+
+	public void setNumGames(int numGames) {
+		this.numMaxGames = numGames;
 	}
 
 	@Override
@@ -45,15 +59,17 @@ public class ICFRuleManager extends RuleManager {
 		numCurrentWhitePieces = 0;
 		strikerPotted = false;
 		queenPotted = false;
-		Player curPlayer = players[playerIndex];
+		curPlayer = players[playerIndex];
+		this.queen = queen;
+		this.currentPlayerIndex = playerIndex;
 
-		if (!breakDone) {
-			// if it is the first shot
-			// check for any collision with the c/m
-			// if no collision, increment breakRetryCount, max 3
-			// if no break is done in 3 tries, move the chance to next player
-			// if break is done set breadDone to true
-		}
+		// if (!breakDone) {
+		// // if it is the first shot
+		// // check for any collision with the c/m
+		// // if no collision, increment breakRetryCount, max 3
+		// // if no break is done in 3 tries, move the chance to next player
+		// // if break is done set breadDone to true
+		// }
 
 		// iterate through each pottedPiece
 		// and get number of potted pieces of each type
@@ -130,6 +146,14 @@ public class ICFRuleManager extends RuleManager {
 						// black is not own piece
 						// turn lost, c/m will remain potted
 						result.nextPlayerIndex = getNextPlayer(playerIndex);
+						// check if it is last piece of the opponent
+						if (numTotalBlackPottedPieces == 9) {
+							// black has finished
+							// call decide game
+							// update white pieces potted
+							numTotalWhitePottedPieces += numCurrentWhitePieces;
+							return decideGame(PieceType.BLACK, 0);
+						}
 					}
 				}
 
@@ -159,6 +183,15 @@ public class ICFRuleManager extends RuleManager {
 						// white is not own piece
 						// turn lost, c/m will remain potted
 						result.nextPlayerIndex = getNextPlayer(playerIndex);
+
+						// check if it is last piece of the opponent
+						if (numTotalWhitePottedPieces == 9) {
+							// white has finished
+							// call decide game
+							// no need to update black pieces count as it has
+							// been checked above
+							return decideGame(PieceType.WHITE, 0);
+						}
 					}
 				}
 
@@ -229,6 +262,7 @@ public class ICFRuleManager extends RuleManager {
 			} else {
 				// black is not own piece
 				// turn lost, c/m remains potted
+				result.resultFlag = this.FOUL_POTTED_ENEMY_PIECE;
 				result.nextPlayerIndex = getNextPlayer(playerIndex);
 			}
 
@@ -238,6 +272,9 @@ public class ICFRuleManager extends RuleManager {
 			if (numTotalBlackPottedPieces == 9) {
 				// black has finished
 				// call decideGame
+				// game will end here, update white potted pieces
+				numTotalWhitePottedPieces += numCurrentWhitePieces;
+				return decideGame(PieceType.BLACK, numCurrentWhitePieces);
 			}
 		}
 
@@ -262,12 +299,16 @@ public class ICFRuleManager extends RuleManager {
 					result.white = numCurrentWhitePieces;
 				}
 
-				result.resultFlag = this.CONTINUE;
-				result.nextPlayerIndex = playerIndex;
-
+				// need to check this, in case a foul is already raised while
+				// checking for black pieces
+				if (result.resultFlag != this.FOUL_POTTED_ENEMY_PIECE) {
+					result.resultFlag = this.CONTINUE;
+					result.nextPlayerIndex = playerIndex;
+				}
 			} else {
 				// white is not own piece
 				// turn lost, c/m remains potted
+				result.resultFlag = this.FOUL_POTTED_ENEMY_PIECE;
 				result.nextPlayerIndex = getNextPlayer(playerIndex);
 			}
 
@@ -277,6 +318,7 @@ public class ICFRuleManager extends RuleManager {
 			if (numTotalWhitePottedPieces == 9) {
 				// white has finished
 				// call decideGame
+				return decideGame(PieceType.WHITE, numCurrentBlackPieces);
 			}
 		}
 
@@ -290,11 +332,15 @@ public class ICFRuleManager extends RuleManager {
 				curPlayer.scoredQueen = true;
 				result.queen = 1;
 				this.scoredQueen = true;
+				// retain turn
+				result.nextPlayerIndex = playerIndex;
+				result.resultFlag = this.CONTINUE;
+			} else {
+				// queen was potted with an enemy piece
+				// return queen
+				result.queen=-1;
 			}
 
-			// retain turn
-			result.nextPlayerIndex = playerIndex;
-			result.resultFlag = this.CONTINUE;
 			// wait for cover
 		} else {
 			// this means it is waiting for cover
@@ -316,6 +362,12 @@ public class ICFRuleManager extends RuleManager {
 			}
 		}
 
+		// nothing happened move to other player
+		if (numCurrentBlackPieces == 0 && numCurrentWhitePieces == 0
+				&& !queenPotted) {
+			result.nextPlayerIndex = getNextPlayer(playerIndex);
+		}
+
 		return result;
 	}
 
@@ -323,4 +375,178 @@ public class ICFRuleManager extends RuleManager {
 		return (currentPlayerIndex + 1) % this.players.length;
 	}
 
+	/**
+	 * called when black or white finishes, calculates point and declares winner
+	 * 
+	 * @return Result object with result flag RESET_GAME:to signal the start of
+	 *         next frame and result flag WIN with winner's piece set to 1 and
+	 *         scores updated in the players object
+	 */
+	private Result decideGame(PieceType pieceFinished, int numAdditionalPiece) {
+		// check if the queen cover scored in the last shot
+		Result result = new Result();
+		if (!scoredQueen && queen.inHole && !strikerPotted) {
+			if ((curPlayer.pieceType == PieceType.BLACK && numCurrentBlackPieces > 0)
+					|| (curPlayer.pieceType == PieceType.WHITE && numCurrentWhitePieces > 0)) {
+				// queen scored with the cover
+				curPlayer.scoredQueen = true;
+				this.scoredQueen = true;
+			}
+		}
+
+		if (strikerPotted) {
+			// calculate due and update number of pieces on board
+
+			if (numCurrentBlackPieces > 0) {
+				// if own piece
+				if (curPlayer.pieceType == PieceType.BLACK) {
+					// return all potted plus 1 due
+					if (numTotalBlackPottedPieces > numCurrentBlackPieces + 1) {
+						// the player has enough to be deducted
+						numTotalBlackPottedPieces -= (numCurrentBlackPieces + 1);
+					} else {
+						// player doesn't have enough
+						// take as much as possible and make score negative
+						// take these when available
+						numTotalBlackPottedPieces = numTotalBlackPottedPieces
+								- numCurrentBlackPieces;
+					}
+
+				}
+			}
+
+			if (numCurrentWhitePieces > 0) {
+				// if own piece
+				if (curPlayer.pieceType == PieceType.WHITE) {
+					// return all potted plus 1 due
+					if (numTotalBlackPottedPieces > numCurrentBlackPieces + 1) {
+						// the player has enough to be deducted
+						numTotalBlackPottedPieces -= (numCurrentBlackPieces + 1);
+					} else {
+						// player doesn't have enough
+						// take as much as possible and make score negative
+						// take these when available
+						numTotalBlackPottedPieces = numTotalBlackPottedPieces
+								- numCurrentBlackPieces;
+					}
+				}
+			}
+		}
+
+		// calculate points
+		int points = 0;
+		if (scoredQueen) {
+			PieceType queenScorerType = null;
+			for (Player player : this.players) {
+				if (player.scoredQueen) {
+					queenScorerType = player.pieceType;
+					break;
+				}
+			}
+
+			if (pieceFinished == PieceType.BLACK) {
+				// black wins
+				points = 9 - numTotalWhitePottedPieces
+						+ (queenScorerType == PieceType.BLACK ? 3 : 0)
+						+ numAdditionalPiece;
+
+				for (Player player : this.players) {
+					if (player.pieceType == PieceType.BLACK) {
+
+						if (player.points >= 22
+								&& queenScorerType == PieceType.BLACK) {
+							player.points += (points - 2);
+							// give only 1 point for queen in case
+							// of points greater than 22
+						} else {
+							player.points += points;
+						}
+					}
+				}
+			} else {
+				// white wins
+				points = 9 - numTotalBlackPottedPieces
+						+ (queenScorerType == PieceType.WHITE ? 3 : 0)
+						+ numAdditionalPiece;
+
+				for (Player player : this.players) {
+					if (player.pieceType == PieceType.WHITE) {
+
+						if (player.points >= 22
+								&& queenScorerType == PieceType.WHITE) {
+							player.points += (points - 2);
+							// give only 1 point for queen in case
+							// of points greater than 22
+						} else {
+							player.points += points;
+						}
+					}
+				}
+			}
+		} else {
+			// this happens when the player pots the last piece of the opponent
+			// or own
+			// with queen still on board
+			if (pieceFinished == PieceType.BLACK) {
+				// white wins
+
+				points = 9 - numTotalBlackPottedPieces + 3;
+
+				for (Player player : this.players) {
+					if (player.pieceType == PieceType.WHITE) {
+						if (player.points >= 22) {
+							player.points += points - 2;
+							// grant only 1 point
+						} else {
+							player.points += points;
+						}
+					}
+				}
+
+			} else {
+				// black wins
+
+				points = 9 - numTotalWhitePottedPieces + 3;
+
+				for (Player player : this.players) {
+					if (player.pieceType == PieceType.BLACK) {
+						if (player.points >= 22) {
+							player.points += points - 2;
+							// grant only 1 point
+						} else {
+							player.points += points;
+						}
+					}
+				}
+
+			}
+		}
+
+		numGameCount++;
+		// check if all games are over
+		if (numGameCount == numMaxGames) {
+			int blackPoints = 0;
+			int whitePoints = 0;
+			for (Player player : this.players) {
+				if (player.pieceType == PieceType.BLACK) {
+					blackPoints += player.points;
+				} else {
+					whitePoints += player.points;
+				}
+			}
+
+			if (blackPoints > whitePoints) {
+				result.black = 1;
+			} else {
+				result.white = 1;
+			}
+			result.resultFlag = WIN;
+		} else {
+			// start next game
+			result.resultFlag = RESET_GAME;
+		}
+
+		result.nextPlayerIndex = getNextPlayer(currentPlayerIndex);
+		return result;
+	}
 }
