@@ -9,6 +9,11 @@ public class Vector2f {
 		this.y = y;
 	}
 
+	public Vector2f(Vector2f v) {
+		this.x = v.x;
+		this.y = v.y;
+	}
+
 	public void scale(float v) {
 		x = x * v;
 		y = y * v;
@@ -56,11 +61,15 @@ public class Vector2f {
 		return new Vector2f(this.x / mag, this.y / mag);
 	}
 
-	//projection of w on v is given by
+	// projection of w on v is given by
 	// |w| (vu . wu) . vu : where vu, wu are unit vectors
 	public Vector2f projectionOn(Vector2f v) {
 		Vector2f vu = v.unitVector();
 		return vu.mulScalar(this.mag() * vu.dot(this));
 	}
 
+	public float angle(Vector2f b) {
+		float n = this.dot(b);
+		return (float) Math.acos(n / (this.mag() * b.mag()));
+	}
 }

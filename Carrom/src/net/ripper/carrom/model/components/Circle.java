@@ -11,6 +11,12 @@ public class Circle {
 		this.y = y;
 	}
 
+	public Circle(Circle c) {
+		this.radius = c.radius;
+		this.x = c.x;
+		this.y = c.y;
+	}
+
 	public boolean isPointInCircle(float px, float py) {
 		float dx = Math.abs(px - this.x);
 		float dy = Math.abs(py - this.y);

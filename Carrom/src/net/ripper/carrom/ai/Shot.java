@@ -1,8 +1,8 @@
 package net.ripper.carrom.ai;
 
 public class Shot {
-	float v;
-	float angle;
-	float strikerX;
-	float strikerY;
+	public float v;
+	public float angle;
+	public float strikerX;
+	public float strikerY;
 }

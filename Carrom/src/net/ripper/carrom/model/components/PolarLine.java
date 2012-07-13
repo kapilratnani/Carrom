@@ -49,4 +49,15 @@ public class PolarLine {
 		this.finalX = (float) (originX + r * Math.cos(theta));
 		this.finalY = (float) (originY + r * Math.sin(theta));
 	}
+
+	/**
+	 * 
+	 * @param theta
+	 *            in radians
+	 */
+	public void rotateBy(float inctheta) {
+		this.theta += inctheta;
+		this.finalX = (float) (originX + r * Math.cos(this.theta));
+		this.finalY = (float) (originY + r * Math.sin(this.theta));
+	}
 }

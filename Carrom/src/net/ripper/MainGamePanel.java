@@ -1,12 +1,15 @@
 package net.ripper;
 
 import net.ripper.carrom.ai.AIPlayerImpl;
+import net.ripper.carrom.ai.Shot;
 import net.ripper.carrom.managers.GameManager;
 import net.ripper.carrom.managers.GameManager.GameState;
 import net.ripper.carrom.managers.clients.IGameManagerClient;
 import net.ripper.carrom.managers.model.Player;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.components.PolarLine;
+import net.ripper.carrom.model.components.Polygon;
+import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.carrom.renderer.RenderThread;
 import net.ripper.util.Clock;
 import android.app.Activity;
@@ -17,6 +20,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.Paint.Style;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.Log;
@@ -51,6 +55,8 @@ public class MainGamePanel extends SurfaceView implements
 
 	PolarLine guideLine;
 	Paint guidePaint;
+	Paint l1Paint;
+	Paint l2Paint;
 	Paint aiRectPaint;
 	AIPlayerImpl ai = new AIPlayerImpl();
 
@@ -95,9 +101,20 @@ public class MainGamePanel extends SurfaceView implements
 		guidePaint.setAntiAlias(true);
 		guidePaint.setPathEffect(new DashPathEffect(new float[] { 10, 10 }, 0));
 
+		l1Paint = new Paint();
+		l1Paint.setColor(Color.GREEN);
+		l1Paint.setAntiAlias(true);
+		l1Paint.setPathEffect(new DashPathEffect(new float[] { 10, 10 }, 0));
+
+		l2Paint = new Paint();
+		l2Paint.setColor(Color.RED);
+		l2Paint.setAntiAlias(true);
+		l2Paint.setPathEffect(new DashPathEffect(new float[] { 10, 10 }, 0));
+
 		aiRectPaint = new Paint();
 		aiRectPaint.setColor(Color.WHITE);
 		aiRectPaint.setAntiAlias(true);
+		aiRectPaint.setStyle(Style.STROKE);
 	}
 
 	@Override
@@ -164,17 +181,29 @@ public class MainGamePanel extends SurfaceView implements
 			renderThread.running = false;
 			((Activity) this.getContext()).finish();
 		}
+		if (this.gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
+			if (e.getX() > this.getWidth() - 50) {
+				Shot shot = ai
+						.getShot(
+								this.gameManager.blackPieces,
+								this.gameManager.whitePieces,
+								this.gameManager.striker,
+								this.gameManager.queen,
+								this.gameManager.board,
+								this.gameManager.players[this.gameManager.currentPlayerIndex]);
 
-		if (e.getX() > this.getWidth() - 50) {
-			ai.getShot(
-					this.gameManager.blackPieces,
-					this.gameManager.whitePieces,
-					this.gameManager.striker,
-					this.gameManager.queen,
-					this.gameManager.board,
-					this.gameManager.players[this.gameManager.currentPlayerIndex]);
+				this.gameManager.striker.region.x = shot.strikerX;
+				this.gameManager.striker.region.y = shot.strikerY;
 
-			Log.d(TAG, "called ai..");
+				Vector2f v = new Vector2f(ai.line2.getFinalX()
+						- ai.line2.originX, ai.line2.getFinalY()
+						- ai.line2.originY);
+				v = v.unitVector().mulScalar(shot.v);
+				this.gameManager.gameState = GameState.STRIKER_SHOT_TAKEN;
+				this.gameManager.takeShot(v.x, v.y);
+
+				Log.d(TAG, "called ai..");
+			}
 		}
 
 		// for (Piece piece : this.gameManager.blackPieces) {
@@ -244,11 +273,22 @@ public class MainGamePanel extends SurfaceView implements
 		/** AI Visualization **/
 		// drawing rects made by ai
 		if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
-			if (ai.rects.size() > 0) {
-				for (int i = 0; i < 5; i++) {
-					canvas.drawRect(ai.rects.get(i), aiRectPaint);
+			if (ai.polygons.size() > 0) {
+				for (Polygon p : ai.polygons) {
+					p.drawPolygon(canvas, aiRectPaint);
 				}
 			}
+
+		}
+
+		// draw guides
+		if (this.ai.line1 != null) {
+			canvas.drawLine(ai.line1.originX, ai.line1.originY,
+					ai.line1.getFinalX(), ai.line1.getFinalY(), l1Paint);
+		}
+		if (ai.line2 != null) {
+			canvas.drawLine(ai.line2.originX, ai.line2.originY,
+					ai.line2.getFinalX(), ai.line2.getFinalY(), l2Paint);
 		}
 	}
 
@@ -268,7 +308,6 @@ public class MainGamePanel extends SurfaceView implements
 		if (this.gameManager.gameState == GameState.STRIKER_SHOT_POWER) {
 			if (this.gameManager.striker.region.isPointInCircle(e1.getX(),
 					e1.getY())) {
-				// TODO move striker in the direction pointed by guide line
 				float vx = Math.abs(velocityX) > 500 ? Math.signum(velocityX) * 500
 						: velocityX;
 

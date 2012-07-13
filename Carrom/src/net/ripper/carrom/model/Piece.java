@@ -28,6 +28,21 @@ public class Piece {
 
 	public PieceType pieceType;
 
+	public Piece() {
+	}
+
+	// copy constructor
+	public Piece(Piece piece) {
+		this.id = piece.id;
+		this.velocity = new Vector2f(piece.velocity);
+		this.region = new Circle(piece.region);
+		this.color = piece.color;
+		this.board = piece.board;
+		this.mass = piece.mass;
+		this.inHole = piece.inHole;
+		this.pieceType = piece.pieceType;
+	}
+
 	public String toString() {
 		return "< " + pieceType.name() + " " + id + " " + region.toString()
 				+ "w= " + mass + " >";

@@ -196,6 +196,7 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.velocity = new Vector2f(0, 0);
 			piece.mass = 5;
 			blackPieces.add(piece);
+			piece.inHole = true;
 		}
 
 		whitePieces = new HashSet<Piece>();
@@ -210,18 +211,26 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.velocity = new Vector2f(0, 0);
 			piece.mass = 5;
 			whitePieces.add(piece);
+			piece.inHole = true;
 		}
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
 		physicsMgr.addPiece(striker);
 		physicsMgr.addPiece(queen);
-		for (Piece piece : blackPieces) {
-			physicsMgr.addPiece(piece);
-		}
 
-		for (Piece piece : whitePieces) {
-			physicsMgr.addPiece(piece);
-		}
+		Piece tmp = (Piece) whitePieces.toArray()[0];
+		tmp.inHole = false;
+		physicsMgr.addPiece(tmp);
+		tmp.region.x = 120;
+		tmp.region.y = 115;
+
+		// for (Piece piece : blackPieces) {
+		// physicsMgr.addPiece(piece);
+		// }
+		//
+		// for (Piece piece : whitePieces) {
+		// physicsMgr.addPiece(piece);
+		// }
 		physicsMgr.registerClient(this);
 
 		// add holes as pieces

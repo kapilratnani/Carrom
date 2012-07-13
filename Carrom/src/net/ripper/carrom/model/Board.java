@@ -29,11 +29,16 @@ public class Board {
 	private final float BOARD_SIZE = 300;
 	private final float BOARD_OFFSET = 18;
 
-	private final int TOP_SHOOTING_RECT = 2;
-	private final int RIGHT_SHOOTING_RECT = 1;
-	private final int BOTTOM_SHOOTING_RECT = 0;
-	private final int LEFT_SHOOTING_RECT = 3;
+	public static final int TOP_SHOOTING_RECT = 2;
+	public static final int RIGHT_SHOOTING_RECT = 1;
+	public static final int BOTTOM_SHOOTING_RECT = 0;
+	public static final int LEFT_SHOOTING_RECT = 3;
 
+	public static final int TOP_LEFT_HOLE=0;
+	public static final int TOP_RIGHT_HOLE=1;
+	public static final int BOTTOM_LEFT_HOLE=3;
+	public static final int BOTTOM_RIGHT_HOLE=2;
+	
 	private int posXOffset = 0;
 	private int posYOffset = 0;
 
@@ -45,18 +50,18 @@ public class Board {
 	private void init() {
 		holes = new Circle[4];
 		// top left
-		holes[0] = new Circle(HOLE_RADIUS, posXOffset + BOARD_OFFSET
+		holes[TOP_LEFT_HOLE] = new Circle(HOLE_RADIUS, posXOffset + BOARD_OFFSET
 				+ HOLE_RADIUS, posYOffset + BOARD_OFFSET + HOLE_RADIUS);
 		// top right
-		holes[1] = new Circle(HOLE_RADIUS, BOARD_SIZE - HOLE_RADIUS
+		holes[TOP_RIGHT_HOLE] = new Circle(HOLE_RADIUS, BOARD_SIZE - HOLE_RADIUS
 				- BOARD_OFFSET + posXOffset, HOLE_RADIUS + BOARD_OFFSET
 				+ posYOffset);
 		// bottom right
-		holes[2] = new Circle(HOLE_RADIUS, BOARD_SIZE - HOLE_RADIUS
+		holes[BOTTOM_RIGHT_HOLE] = new Circle(HOLE_RADIUS, BOARD_SIZE - HOLE_RADIUS
 				- BOARD_OFFSET + posXOffset, BOARD_SIZE - HOLE_RADIUS
 				- BOARD_OFFSET + posYOffset);
 		// bottom left
-		holes[3] = new Circle(HOLE_RADIUS, posXOffset + BOARD_OFFSET
+		holes[BOTTOM_LEFT_HOLE] = new Circle(HOLE_RADIUS, posXOffset + BOARD_OFFSET
 				+ HOLE_RADIUS, BOARD_SIZE - HOLE_RADIUS - BOARD_OFFSET
 				+ posYOffset);
 

@@ -8,4 +8,5 @@ public class Player {
 	public boolean scoredQueen;
 	public int points;
 	public int shootingRectIndex;
+	public boolean aiPlayer;
 }

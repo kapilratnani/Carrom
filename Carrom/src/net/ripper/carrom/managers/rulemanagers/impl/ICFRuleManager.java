@@ -1,12 +1,11 @@
 package net.ripper.carrom.managers.rulemanagers.impl;
 
-import java.util.Currency;
+
 import java.util.List;
 import java.util.Set;
 
 import net.ripper.carrom.managers.RuleManager;
 import net.ripper.carrom.managers.model.Player;
-import net.ripper.carrom.model.CollisionPair;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.Piece.PieceType;
 
