@@ -184,6 +184,7 @@ public class GameManager implements IPhysicsManagerClient,
 
 		genInitPoints(queen.region);
 
+		// FIXME Temporary AI testing hardcoding
 		blackPieces = new HashSet<Piece>();
 		for (int i = 0; i < NUM_CARROM_MEN; i++) {
 			Piece piece = new Piece();
@@ -216,13 +217,15 @@ public class GameManager implements IPhysicsManagerClient,
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
 		physicsMgr.addPiece(striker);
-		physicsMgr.addPiece(queen);
-
+		
+		// physicsMgr.addPiece(queen);
+		queen.inHole=true;
+		
 		Piece tmp = (Piece) whitePieces.toArray()[0];
 		tmp.inHole = false;
 		physicsMgr.addPiece(tmp);
 		tmp.region.x = 120;
-		tmp.region.y = 115;
+		tmp.region.y = 100;
 
 		// for (Piece piece : blackPieces) {
 		// physicsMgr.addPiece(piece);

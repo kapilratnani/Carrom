@@ -4,8 +4,8 @@ import java.util.List;
 
 import net.ripper.carrom.model.components.Circle;
 import net.ripper.carrom.model.components.Polygon;
-import net.ripper.carrom.model.components.Vector2f;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 
 public class UtilityFunctions {
@@ -20,6 +20,20 @@ public class UtilityFunctions {
 	}
 
 	public static boolean RectangleCircleIntersection(RectF rect, Circle circle) {
+
+		// find closest point of the rectangle from the center of the circle
+		float closestX = clampF(circle.x, rect.left, rect.right);
+		float closestY = clampF(circle.y, rect.top, rect.bottom);
+
+		// find distance between the closest point and the center of the circle
+		float distanceX = circle.x - closestX;
+		float distanceY = circle.y - closestY;
+
+		// if the distance is less than radius, then intersection occurs
+		return (distanceX * distanceX) + (distanceY * distanceY) < (circle.radius * circle.radius);
+	}
+	
+	public static boolean RectangleCircleIntersection(Rect rect, Circle circle) {
 
 		// find closest point of the rectangle from the center of the circle
 		float closestX = clampF(circle.x, rect.left, rect.right);

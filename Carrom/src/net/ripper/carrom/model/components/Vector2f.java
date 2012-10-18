@@ -68,6 +68,20 @@ public class Vector2f {
 		return vu.mulScalar(this.mag() * vu.dot(this));
 	}
 
+	/**
+	 * <pre>
+	 *	1. 	If A and B are perpendicular (at 90 degrees to each other), the result of
+	 * 		the dot product will be zero, because cos(Θ) will be zero. 
+	 * 	2.	If the angle between A and B are less than 90 degrees, the dot product will be
+	 * 		positive (greater than zero), as cos(Θ) will be positive, and the vector
+	 * 		lengths are always positive values. 
+	 * 	3.	If the angle between A and B are greater than 90 degrees, the dot product will be 
+	 * 		negative (less than zero), as cos(Θ) will be negative, and the vector lengths are 
+	 * 		always positive values.
+	 * </pre>
+	 * @param b
+	 * @return
+	 */
 	public float angle(Vector2f b) {
 		float n = this.dot(b);
 		return (float) Math.acos(n / (this.mag() * b.mag()));
