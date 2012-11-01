@@ -32,7 +32,7 @@ public class UtilityFunctions {
 		// if the distance is less than radius, then intersection occurs
 		return (distanceX * distanceX) + (distanceY * distanceY) < (circle.radius * circle.radius);
 	}
-	
+
 	public static boolean RectangleCircleIntersection(Rect rect, Circle circle) {
 
 		// find closest point of the rectangle from the center of the circle
@@ -68,11 +68,30 @@ public class UtilityFunctions {
 		return false;
 	}
 
-	public static double pointToLineDistance(PointF A, PointF B, PointF P) {
-		double normalLength = Math.sqrt((B.x - A.x) * (B.x - A.x) + (B.y - A.y)
-				* (B.y - A.y));
-		return Math.abs((P.x - A.x) * (B.y - A.y) - (P.y - A.y) * (B.x - A.x))
-				/ normalLength;
+	// public static double pointToLineDistance(PointF A, PointF B, PointF P) {
+	// double normalLength = Math.sqrt((B.x - A.x) * (B.x - A.x) + (B.y - A.y)
+	// * (B.y - A.y));
+	// return Math.abs((P.x - A.x) * (B.y - A.y) - (P.y - A.y) * (B.x - A.x))
+	// / normalLength;
+	// }
+
+	public static PointF closestpointonline(float lx1, float ly1, float lx2,
+			float ly2, float x0, float y0) {
+		float A1 = ly2 - ly1;
+		float B1 = lx1 - lx2;
+		float C1 = (ly2 - ly1) * lx1 + (lx1 - lx2) * ly1;
+		float C2 = -B1 * x0 + A1 * y0;
+		float det = A1 * A1 - -B1 * B1;
+		float cx = 0;
+		float cy = 0;
+		if (det != 0) {
+			cx = ((A1 * C1 - B1 * C2) / det);
+			cy = ((A1 * C2 - -B1 * C1) / det);
+		} else {
+			cx = x0;
+			cy = y0;
+		}
+		return new PointF(cx, cy);
 	}
 
 	public static boolean CircleLineIntersection(float cx, float cy, float cr,

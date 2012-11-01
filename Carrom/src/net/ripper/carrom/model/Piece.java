@@ -43,8 +43,16 @@ public class Piece {
 		this.pieceType = piece.pieceType;
 	}
 
+	public boolean isMoving() {
+		return this.velocity.x != 0 || this.velocity.y != 0;
+	}
+
 	public String toString() {
 		return "< " + pieceType.name() + " " + id + " " + region.toString()
-				+ "w= " + mass + " >";
+				+ "w= " + mass + " v=" + velocity.toString() + " >";
+	}
+
+	public boolean isVisible() {
+		return !inHole;
 	}
 }

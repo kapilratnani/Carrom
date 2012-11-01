@@ -217,15 +217,17 @@ public class GameManager implements IPhysicsManagerClient,
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
 		physicsMgr.addPiece(striker);
-		
-		// physicsMgr.addPiece(queen);
-		queen.inHole=true;
-		
-		Piece tmp = (Piece) whitePieces.toArray()[0];
-		tmp.inHole = false;
-		physicsMgr.addPiece(tmp);
-		tmp.region.x = 120;
-		tmp.region.y = 100;
+
+		physicsMgr.addPiece(queen);
+		queen.inHole = false;
+
+		// queen.region.x = 110;
+
+		// Piece tmp = (Piece) whitePieces.toArray()[0];
+		// tmp.inHole = true;
+		// // physicsMgr.addPiece(tmp);
+		// tmp.region.x = 120;
+		// tmp.region.y = 100;
 
 		// for (Piece piece : blackPieces) {
 		// physicsMgr.addPiece(piece);

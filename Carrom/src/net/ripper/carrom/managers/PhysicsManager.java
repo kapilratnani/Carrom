@@ -11,6 +11,7 @@ import net.ripper.carrom.model.CollisionPair;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.util.UtilityFunctions;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -77,7 +78,9 @@ public class PhysicsManager {
 	public void addCustomCollisionResolverForPiece(Piece piece,
 			CustomCollisionResolver collisionResolver) {
 		customCollisionResolversMap.put(piece, collisionResolver);
-		pieces.add(piece);
+		if (!pieces.contains(piece)) {
+			pieces.add(piece);
+		}
 	}
 
 	public float update() {
@@ -86,34 +89,43 @@ public class PhysicsManager {
 		if (!paused) {
 			for (int i = 0; i < pieces.size(); i++) {
 				pieceA = pieces.get(i);
+				if (!pieceA.isVisible())
+					continue;
+
 				for (int j = i + 1; j < pieces.size(); j++) {
 					pieceB = pieces.get(j);
-					if (movingTowards(pieceA, pieceB)
-							&& isColliding(pieceA, pieceB)) {
+					if (!pieceB.isVisible())
+						continue;
 
-						if (customCollisionResolversMap.containsKey(pieceA)) {
-							customCollisionResolversMap.get(pieceA)
-									.resolveCollision(pieceA, pieceB);
-						} else if (customCollisionResolversMap
-								.containsKey(pieceB)) {
-							customCollisionResolversMap.get(pieceB)
-									.resolveCollision(pieceA, pieceB);
-						} else {
-							// Default collision resolver
-							resolveCollisionByPConservation(pieceA, pieceB);
+					if (movingTowards(pieceA, pieceB)) {
+						if (isColliding(pieceA, pieceB)) {
+
+							if (customCollisionResolversMap.containsKey(pieceA)) {
+								customCollisionResolversMap.get(pieceA)
+										.resolveCollision(pieceA, pieceB);
+							} else if (customCollisionResolversMap
+									.containsKey(pieceB)) {
+								customCollisionResolversMap.get(pieceB)
+										.resolveCollision(pieceA, pieceB);
+							} else {
+								// resolve contact
+								resolveContact(pieceA, pieceB);
+								// Default collision resolver
+								resolveCollisionByPConservation(pieceA, pieceB);
+							}
+
+							lastCollisionList.add(new CollisionPair(pieceA,
+									pieceB));
 						}
-
-						lastCollisionList
-								.add(new CollisionPair(pieceA, pieceB));
 					}
 				}
 			}
 
-			nextCollisionTime = getNextCollisionTime();
 			boolean moving = false;
 			for (Piece piece : pieces) {
 				moving = moving | updatePiece(piece, nextCollisionTime);
 			}
+			// nextCollisionTime = getNextCollisionTime();
 
 			if (!moving) {
 				// notify client
@@ -121,6 +133,48 @@ public class PhysicsManager {
 			}
 		}
 		return nextCollisionTime;
+	}
+
+	private void resolveContact(Piece pieceA, Piece pieceB) {
+
+		// static-dynamic
+		if (pieceA.isMoving() || pieceB.isMoving()) {
+			Piece staticPiece;
+			Piece movingPiece;
+
+			if (pieceA.isMoving()) {
+				staticPiece = pieceB;
+				movingPiece = pieceA;
+			} else {
+				staticPiece = pieceA;
+				movingPiece = pieceB;
+			}
+
+			// REF:https://sites.google.com/site/t3hprogrammer/research/circle-circle-collision-tutorial
+			PointF d = UtilityFunctions.closestpointonline(
+					movingPiece.region.x, movingPiece.region.y,
+					movingPiece.region.x + movingPiece.velocity.x,
+					movingPiece.region.y + movingPiece.velocity.y,
+					staticPiece.region.x, staticPiece.region.y);
+
+			float closestDistsq = UtilityFunctions.euclideanSqDistance(
+					staticPiece.region.x, staticPiece.region.y, d.x, d.y);
+			float sumRadiusSq = (movingPiece.region.radius + staticPiece.region.radius)
+					* (movingPiece.region.radius + staticPiece.region.radius);
+
+			float backDist = android.util.FloatMath.sqrt(sumRadiusSq
+					- closestDistsq);
+			Vector2f movingPieceVu = movingPiece.velocity.unitVector();
+
+			movingPiece.region.x = d.x - backDist * movingPieceVu.x;
+			movingPiece.region.y = d.y - backDist * movingPieceVu.y;
+		}
+		// } else if (pieceA.isMoving() == false && pieceB.isMoving() == false)
+		// { // static-static
+		//
+		// } else {
+		// // dynamic-dynamic
+		// }
 	}
 
 	private float getNextCollisionTime() {
@@ -158,11 +212,15 @@ public class PhysicsManager {
 				* (pieceB.region.y - pieceA.region.y) - (pieceA.region.radius + pieceB.region.radius)
 				* (pieceA.region.radius + pieceB.region.radius));
 		float disc = b * b - 4 * a * c;
+		// disc <0 then no solution to the quadratic equation.
+		// cm will not collide ever
 		if (disc >= 0) {
-			t = (float) Math.min(-b - Math.sqrt(disc) / (2 * a),
-					-b + Math.sqrt(disc) / (2 * a));
+			float t1 = -b - android.util.FloatMath.sqrt(disc) / (2 * a);
+			float t2 = -b + android.util.FloatMath.sqrt(disc) / (2 * a);
+			t = Math.min(t1, t2);
+			Log.d(TAG, "t1=" + t1 + ",t2=" + t2);
 		}
-		return t;
+		return t / 100;
 	}
 
 	private boolean movingTowards(Piece a, Piece b) {
@@ -217,6 +275,7 @@ public class PhysicsManager {
 
 		a.velocity = vfa;
 		b.velocity = vfb;
+
 	}
 
 	/**
@@ -250,8 +309,14 @@ public class PhysicsManager {
 			}
 
 			if (piece.region.y - piece.region.radius <= boundsRect.top) {
+//				float penetration = piece.region.radius - piece.region.y
+//						+ boundsRect.top;
+//				float t = Math.abs(penetration / piece.velocity.y);
+//				piece.region.x += -piece.velocity.x * t;
+
 				piece.velocity.y = -piece.velocity.y;
 				piece.region.y = boundsRect.top + piece.region.radius;
+
 			} else if (piece.region.y + piece.region.radius >= boundsRect.bottom) {
 				piece.velocity.y = -piece.velocity.y;
 				piece.region.y = boundsRect.bottom - piece.region.radius;
