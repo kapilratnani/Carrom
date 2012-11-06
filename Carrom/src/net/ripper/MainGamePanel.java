@@ -291,14 +291,14 @@ public class MainGamePanel extends SurfaceView implements
 
 		/** AI Visualization **/
 		// // drawing rects made by ai
-		 if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
-		 if (ai.polygons.size() > 0) {
-		 for (Polygon p : ai.polygons) {
-		 p.drawPolygon(canvas, aiRectPaint);
-		 }
-		 }
-		
-		 }
+		if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
+			if (ai.polygons.size() > 0) {
+				for (Polygon p : ai.polygons) {
+					p.drawPolygon(canvas, aiRectPaint);
+				}
+			}
+
+		}
 
 		// // draw guides
 		if (this.ai.line1 != null) {
@@ -323,12 +323,12 @@ public class MainGamePanel extends SurfaceView implements
 			canvas.drawLine(ai.line5.originX, ai.line5.originY,
 					ai.line5.getFinalX(), ai.line5.getFinalY(), l5Paint);
 		}
-//		if (ai.strikerTest != null) {
-//			canvas.drawBitmap(striker, ai.strikerTest.region.x
-//					- ai.strikerTest.region.radius, ai.strikerTest.region.y
-//					- ai.strikerTest.region.radius, null);
-//
-//		}
+		if (ai.strikerTest != null) {
+			canvas.drawBitmap(striker, ai.strikerTest.region.x
+					- ai.strikerTest.region.radius, ai.strikerTest.region.y
+					- ai.strikerTest.region.radius, null);
+
+		}
 	}
 
 	public void drawGuide(Canvas canvas) {

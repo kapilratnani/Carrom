@@ -121,4 +121,21 @@ public class UtilityFunctions {
 		}
 		return false;
 	}
+
+	public static PointF mirrorXaxis(float x, float y, float originY) {
+		if (y > originY) {
+			return new PointF(x, -(y - 2 * originY));
+		} else {
+			return new PointF(x, y + 2 * originY);
+		}
+	}
+
+	public static PointF mirrorYaxis(float x, float y, float originX) {
+		if (x > originX) {
+			return new PointF(-(x - 2 * originX), y);
+		} else {
+			return new PointF(x + 2 * originX, y);
+		}
+	}
+
 }

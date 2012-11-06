@@ -138,7 +138,8 @@ public class PhysicsManager {
 	private void resolveContact(Piece pieceA, Piece pieceB) {
 
 		// static-dynamic
-		if (pieceA.isMoving() || pieceB.isMoving()) {
+		if ((pieceA.isMoving() && !pieceB.isMoving())
+				|| (!pieceA.isMoving() && pieceB.isMoving())) {
 			Piece staticPiece;
 			Piece movingPiece;
 
@@ -246,6 +247,8 @@ public class PhysicsManager {
 	 * @param b
 	 */
 	private void resolveCollisionByPConservation(Piece a, Piece b) {
+		Log.d(TAG, a.toString() + " " + b.toString());
+
 		// First, find the normalized vector n from the center of
 		// circle1 to the center of circle2
 		Vector2f n = new Vector2f(a.region.x - b.region.x, a.region.y
