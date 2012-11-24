@@ -16,16 +16,17 @@ public class UtilityFunctions {
 	}
 
 	public static float euclideanDistance(float x1, float y1, float x2, float y2) {
-		return (float) Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+		return android.util.FloatMath.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1)
+				* (y2 - y1));
 	}
 
 	public static boolean RectangleCircleIntersection(RectF rect, Circle circle) {
 
-		// find closest point of the rectangle from the center of the circle
+		// find closest point of the rectangle from the centre of the circle
 		float closestX = clampF(circle.x, rect.left, rect.right);
 		float closestY = clampF(circle.y, rect.top, rect.bottom);
 
-		// find distance between the closest point and the center of the circle
+		// find distance between the closest point and the centre of the circle
 		float distanceX = circle.x - closestX;
 		float distanceY = circle.y - closestY;
 
@@ -35,11 +36,11 @@ public class UtilityFunctions {
 
 	public static boolean RectangleCircleIntersection(Rect rect, Circle circle) {
 
-		// find closest point of the rectangle from the center of the circle
+		// find closest point of the rectangle from the centre of the circle
 		float closestX = clampF(circle.x, rect.left, rect.right);
 		float closestY = clampF(circle.y, rect.top, rect.bottom);
 
-		// find distance between the closest point and the center of the circle
+		// find distance between the closest point and the centre of the circle
 		float distanceX = circle.x - closestX;
 		float distanceY = circle.y - closestY;
 
@@ -63,6 +64,36 @@ public class UtilityFunctions {
 		if (CircleLineIntersection(c.x, c.y, c.radius, polyPoints.get(0).x,
 				polyPoints.get(0).y, polyPoints.get(polyPoints.size() - 1).x,
 				polyPoints.get(polyPoints.size() - 1).y))
+			return true;
+
+		PointF leftPoint = p.getLeftMostPoint();
+		PointF rightPoint = p.getRightMostPoint();
+		PointF topPoint = p.getTopMostPoint();
+		PointF bottomPoint = p.getBottomMostPoint();
+
+		if (c.x > leftPoint.x && c.x < rightPoint.x && c.y < bottomPoint.y
+				&& c.y > topPoint.y)
+			return true;
+
+		return false;
+	}
+
+	public static boolean CirclePolygonIntersection2(Polygon p, Circle c) {
+		List<PointF> polyPoints = p.getPoints();
+		PointF closestPoint = null;
+		for (int i = 0; i < polyPoints.size() - 1; i++) {
+			closestPoint = closestpointonline(polyPoints.get(i).x,
+					polyPoints.get(i).y, polyPoints.get(i + 1).x,
+					polyPoints.get(i).y, c.x, c.y);
+			if (euclideanSqDistance(closestPoint.x, closestPoint.y, c.x, c.y) <= (c.radius * c.radius))
+				return true;
+		}
+
+		closestPoint = closestpointonline(polyPoints.get(0).x,
+				polyPoints.get(0).y, polyPoints.get(polyPoints.size() - 1).x,
+				polyPoints.get(polyPoints.size() - 1).y, c.x, c.y);
+
+		if (euclideanSqDistance(closestPoint.x, closestPoint.y, c.x, c.y) <= (c.radius * c.radius))
 			return true;
 
 		return false;
@@ -106,7 +137,7 @@ public class UtilityFunctions {
 		float quad = b * b - 4 * a * c;
 		if (quad >= 0) {
 			// An infinite collision is happening, but let's not stop here
-			float quadsqrt = (float) Math.sqrt(quad);
+			float quadsqrt = android.util.FloatMath.sqrt(quad);
 			for (int i = -1; i <= 1; i += 2) {
 				// Returns the two coordinates of the intersection points
 				float t = (i * -b + quadsqrt) / (2 * a);

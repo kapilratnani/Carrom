@@ -7,9 +7,8 @@ import net.ripper.carrom.managers.GameManager.GameState;
 import net.ripper.carrom.managers.clients.IGameManagerClient;
 import net.ripper.carrom.managers.model.Player;
 import net.ripper.carrom.model.Piece;
+import net.ripper.carrom.model.components.Circle;
 import net.ripper.carrom.model.components.PolarLine;
-import net.ripper.carrom.model.components.Polygon;
-import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.carrom.renderer.RenderThread;
 import net.ripper.util.Clock;
 import android.app.Activity;
@@ -22,7 +21,6 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
@@ -69,12 +67,10 @@ public class MainGamePanel extends SurfaceView implements
 		this.getHolder().addCallback(this);
 		this.setFocusable(true);
 
-		gameManager = new GameManager(2);
-
 		renderThread = new RenderThread(this.getHolder(), this);
 
-		clock = new Clock();
-		clock2 = new Clock();
+		// clock = new Clock();
+		// clock2 = new Clock();
 		gesture = new GestureDetector(this);
 
 		carromBoard = BitmapFactory.decodeResource(this.getResources(),
@@ -82,13 +78,16 @@ public class MainGamePanel extends SurfaceView implements
 		striker = BitmapFactory.decodeResource(this.getResources(),
 				R.drawable.striker);
 		queen = BitmapFactory.decodeResource(this.getResources(),
-				R.drawable.queen_12);
+				R.drawable.queen);
 
 		black = BitmapFactory.decodeResource(this.getResources(),
-				R.drawable.black_12);
+				R.drawable.black);
 
 		white = BitmapFactory.decodeResource(this.getResources(),
-				R.drawable.white_12);
+				R.drawable.white);
+
+		gameManager = new GameManager(2, striker.getHeight() / 2,
+				black.getHeight() / 2, carromBoard.getHeight());
 
 		fpsPaint = new Paint();
 		fpsPaint.setARGB(255, 255, 255, 255);
@@ -156,26 +155,6 @@ public class MainGamePanel extends SurfaceView implements
 			}
 		}
 
-		// try {
-		// FileOutputStream outs = this.getContext().openFileOutput("pos", 0);
-		// for (Piece piece : this.gameManager.blackPieces) {
-		// String wstr = piece.region.x + "," + piece.region.y + "\n";
-		// outs.write(wstr.getBytes());
-		// }
-		// for (Piece piece : this.gameManager.whitePieces) {
-		// String wstr = piece.region.x + "," + piece.region.y + "\n";
-		// outs.write(wstr.getBytes());
-		// }
-		//
-		// String wstr = this.gameManager.queen.region.x + ","
-		// + this.gameManager.queen.region.y + "\n";
-		// outs.write(wstr.getBytes());
-		//
-		// outs.close();
-		// } catch (Exception e) {
-		//
-		// e.printStackTrace();
-		// }
 	}
 
 	// the fps to be displayed
@@ -190,8 +169,6 @@ public class MainGamePanel extends SurfaceView implements
 			canvas.drawText(fps, this.getWidth() - 50, 20, fpsPaint);
 		}
 	}
-
-	// Piece touchedPiece = null;
 
 	@Override
 	public boolean onTouchEvent(MotionEvent e) {
@@ -213,10 +190,6 @@ public class MainGamePanel extends SurfaceView implements
 				this.gameManager.striker.region.x = shot.strikerX;
 				this.gameManager.striker.region.y = shot.strikerY;
 
-				// Vector2f v = new Vector2f(ai.line2.getFinalX()
-				// - ai.line2.originX, ai.line2.getFinalY()
-				// - ai.line2.originY);
-				// v = v.unitVector().mulScalar(shot.v);
 				this.gameManager.gameState = GameState.STRIKER_SHOT_TAKEN;
 				this.gameManager.takeShot(shot.strikerVelocity.x,
 						shot.strikerVelocity.y);
@@ -225,24 +198,6 @@ public class MainGamePanel extends SurfaceView implements
 			}
 		}
 
-		// for (Piece piece : this.gameManager.blackPieces) {
-		// if (piece.region.isPointInCircle(e.getX(), e.getY())) {
-		// touchedPiece = piece;
-		// }
-		// }
-		//
-		// for (Piece piece : this.gameManager.whitePieces) {
-		// if (piece.region.isPointInCircle(e.getX(), e.getY())) {
-		// touchedPiece = piece;
-		// }
-		// }
-		//
-		// if (e.getAction() == MotionEvent.ACTION_MOVE) {
-		// if (touchedPiece != null) {
-		// touchedPiece.region.x = e.getX();
-		// touchedPiece.region.y = e.getY();
-		// }
-		// }
 		return gesture.onTouchEvent(e);
 	}
 
@@ -253,10 +208,8 @@ public class MainGamePanel extends SurfaceView implements
 	@Override
 	public void onDraw(Canvas canvas) {
 		// draw board
-		// Bitmap bmp = Bitmap.createBitmap(300, 300, Config.ARGB_8888);
-		// Canvas c = new Canvas(bmp);
 		canvas.drawColor(Color.BLACK);
-		canvas.drawBitmap(carromBoard, 0, 0, null);
+		canvas.drawBitmap(carromBoard, 90, 10, null);
 
 		canvas.drawBitmap(striker, this.gameManager.striker.region.x
 				- this.gameManager.striker.region.radius,
@@ -289,46 +242,62 @@ public class MainGamePanel extends SurfaceView implements
 			drawGuide(canvas);
 		}
 
+		for (Rect r : this.gameManager.board.shootingRect) {
+			canvas.drawRect(r, aiRectPaint);
+		}
+
+		canvas.drawCircle(this.gameManager.board.centerCircle.x,
+				this.gameManager.board.centerCircle.y,
+				this.gameManager.board.centerCircle.radius, aiRectPaint);
+
+		for (Circle c : this.gameManager.board.holes) {
+			canvas.drawCircle(c.x, c.y, c.radius, aiRectPaint);
+		}
+
 		/** AI Visualization **/
 		// // drawing rects made by ai
-		if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
-			if (ai.polygons.size() > 0) {
-				for (Polygon p : ai.polygons) {
-					p.drawPolygon(canvas, aiRectPaint);
-				}
-			}
-
-		}
-
-		// // draw guides
-		if (this.ai.line1 != null) {
-			canvas.drawLine(ai.line1.originX, ai.line1.originY,
-					ai.line1.getFinalX(), ai.line1.getFinalY(), l1Paint);
-		}
-		if (ai.line2 != null) {
-			canvas.drawLine(ai.line2.originX, ai.line2.originY,
-					ai.line2.getFinalX(), ai.line2.getFinalY(), l2Paint);
-		}
-
-		if (ai.line3 != null) {
-			canvas.drawLine(ai.line3.originX, ai.line3.originY,
-					ai.line3.getFinalX(), ai.line3.getFinalY(), l3Paint);
-		}
-
-		if (ai.line4 != null) {
-			canvas.drawLine(ai.line4.originX, ai.line4.originY,
-					ai.line4.getFinalX(), ai.line4.getFinalY(), l4Paint);
-		}
-		if (ai.line5 != null) {
-			canvas.drawLine(ai.line5.originX, ai.line5.originY,
-					ai.line5.getFinalX(), ai.line5.getFinalY(), l5Paint);
-		}
-		if (ai.strikerTest != null) {
-			canvas.drawBitmap(striker, ai.strikerTest.region.x
-					- ai.strikerTest.region.radius, ai.strikerTest.region.y
-					- ai.strikerTest.region.radius, null);
-
-		}
+		// if (gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
+		// if (ai.polygons.size() > 0) {
+		// for (Polygon p : ai.polygons) {
+		// p.drawPolygon(canvas, aiRectPaint);
+		// }
+		// }
+		//
+		// }
+		//
+		// if (ai.testRect != null) {
+		// ai.testRect.drawPolygon(canvas, aiRectPaint);
+		// }
+		//
+		// // // draw guides
+		// if (this.ai.line1 != null) {
+		// canvas.drawLine(ai.line1.originX, ai.line1.originY,
+		// ai.line1.getFinalX(), ai.line1.getFinalY(), l1Paint);
+		// }
+		// if (ai.line2 != null) {
+		// canvas.drawLine(ai.line2.originX, ai.line2.originY,
+		// ai.line2.getFinalX(), ai.line2.getFinalY(), l2Paint);
+		// }
+		//
+		// if (ai.line3 != null) {
+		// canvas.drawLine(ai.line3.originX, ai.line3.originY,
+		// ai.line3.getFinalX(), ai.line3.getFinalY(), l3Paint);
+		// }
+		//
+		// if (ai.line4 != null) {
+		// canvas.drawLine(ai.line4.originX, ai.line4.originY,
+		// ai.line4.getFinalX(), ai.line4.getFinalY(), l4Paint);
+		// }
+		// if (ai.line5 != null) {
+		// canvas.drawLine(ai.line5.originX, ai.line5.originY,
+		// ai.line5.getFinalX(), ai.line5.getFinalY(), l5Paint);
+		// }
+		// if (ai.strikerTest != null) {
+		// canvas.drawBitmap(striker, ai.strikerTest.region.x
+		// - ai.strikerTest.region.radius, ai.strikerTest.region.y
+		// - ai.strikerTest.region.radius, null);
+		//
+		// }
 	}
 
 	public void drawGuide(Canvas canvas) {
@@ -352,10 +321,11 @@ public class MainGamePanel extends SurfaceView implements
 
 				float vy = Math.abs(velocityY) > 500 ? Math.signum(velocityY) * 500
 						: velocityY;
-				float resultant = (float) Math.sqrt(vx * vx + vy * vy);
+				float resultant = android.util.FloatMath
+						.sqrt(vx * vx + vy * vy);
 
-				vx = (float) (resultant * Math.cos(guideLine.theta));
-				vy = (float) (resultant * Math.sin(guideLine.theta));
+				vx = (resultant * android.util.FloatMath.cos(guideLine.theta));
+				vy = (resultant * android.util.FloatMath.sin(guideLine.theta));
 
 				this.gameManager.takeShot(vx / 50, vy / 50);
 

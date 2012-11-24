@@ -15,7 +15,6 @@ import net.ripper.carrom.model.components.PolarLine;
 import net.ripper.carrom.model.components.Polygon;
 import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.util.UtilityFunctions;
-import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.util.Log;
@@ -27,27 +26,33 @@ public class AIPlayerImpl extends AIPlayer {
 	 */
 	private static final int STRIKER_INIT_SPEED_DIRECT_SHOT = 7;
 	private static final int STRIKER_INIT_SPEED_REBOUND_SHOT = 10;
-	/**
-	 * contains all rects which represent the motion/direction of striker to hit
-	 * a particular c/m
-	 */
-	public List<Polygon> polygons = new ArrayList<Polygon>();
 
 	/**
 	 * contains a mapping of c/m to rect which represents the motion of c/m
 	 * towards the hole.
 	 */
-	private HashMap<Piece, ArrayList<Polygon>> pieceToDirectShotPolygonMap;
-	private HashMap<Piece, ArrayList<Polygon>> pieceToReboundShotPolygonMap;
 
 	public PolarLine line1;
 	public PolarLine line2;
 	public PolarLine line3;
 	public PolarLine line4;
 	public PolarLine line5;
+	public Polygon testRect;
 
 	public Piece strikerTest;
 	float sttx, stty;
+
+	private Set<Piece> allOnBoardPieces = new HashSet<Piece>();
+
+	/**
+	 * contains all rects which represent the motion/direction of striker to hit
+	 * a particular c/m
+	 */
+	public List<Polygon> polygons = new ArrayList<Polygon>();
+	private HashMap<Piece, ArrayList<Polygon>> pieceToDirectShotPolygonMap = new HashMap<Piece, ArrayList<Polygon>>();
+	private HashMap<Piece, ArrayList<Polygon>> pieceToReboundShotPolygonMap = new HashMap<Piece, ArrayList<Polygon>>();
+	private List<Piece> pottablePieces = new ArrayList<Piece>();
+	private List<Piece> cmsOntheWay = new ArrayList<Piece>();
 
 	/**
 	 * for direct shots, choose holes which lie opposite to the shooting rect
@@ -121,6 +126,8 @@ public class AIPlayerImpl extends AIPlayer {
 				stX = rightPoint.x;
 				if (stX < (shootingRect.left + striker.region.radius)) {
 					stX = shootingRect.left + striker.region.radius;
+				} else if (stX > (shootingRect.right - striker.region.radius)) {
+					stX = shootingRect.right - striker.region.radius;
 				}
 			} else if (Board.TOP_RIGHT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
@@ -128,6 +135,8 @@ public class AIPlayerImpl extends AIPlayer {
 				stX = leftPoint.x;
 				if (stX > (shootingRect.right - striker.region.radius)) {
 					stX = shootingRect.right - striker.region.radius;
+				} else if (stX < (shootingRect.left + striker.region.radius)) {
+					stX = shootingRect.left + striker.region.radius;
 				}
 
 			}
@@ -144,6 +153,8 @@ public class AIPlayerImpl extends AIPlayer {
 				stY = bottomPoint.y;
 				if (stY > (shootingRect.bottom - striker.region.radius)) {
 					stY = shootingRect.bottom - striker.region.radius;
+				} else if (stY < shootingRect.top + striker.region.radius) {
+					stY = shootingRect.top + striker.region.radius;
 				}
 			} else if (Board.BOTTOM_LEFT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
@@ -151,6 +162,8 @@ public class AIPlayerImpl extends AIPlayer {
 				stX = topPoint.y;
 				if (stY < (shootingRect.top + striker.region.radius)) {
 					stY = shootingRect.top + striker.region.radius;
+				} else if (stY > (shootingRect.bottom - striker.region.radius)) {
+					stY = shootingRect.bottom - striker.region.radius;
 				}
 
 			}
@@ -238,12 +251,11 @@ public class AIPlayerImpl extends AIPlayer {
 		Circle[] holes = board.holes;
 		Shot shot = null;
 		// all pieces which are on board
-		Set<Piece> allOnBoardPieces = new HashSet<Piece>();
-
-		polygons = new ArrayList<Polygon>();
-		pieceToDirectShotPolygonMap = new HashMap<Piece, ArrayList<Polygon>>();
-		pieceToReboundShotPolygonMap = new HashMap<Piece, ArrayList<Polygon>>();
-		List<Piece> pottablePieces = new ArrayList<Piece>();
+		allOnBoardPieces.clear();
+		pieceToDirectShotPolygonMap.clear();
+		pieceToReboundShotPolygonMap.clear();
+		pottablePieces.clear();
+		polygons.clear();
 
 		/**
 		 * stores all pieces which can be potted in a list
@@ -382,6 +394,7 @@ public class AIPlayerImpl extends AIPlayer {
 				// if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT
 				// && Board.TOP_LEFT_HOLE == p.tag) {
 				int holeIndex = p.tag;
+
 				/**
 				 * get striker start position to hit the current c/m. On this
 				 * position striker is kept for the first time when hitting a
@@ -393,6 +406,13 @@ public class AIPlayerImpl extends AIPlayer {
 				 */
 				strikerPos = getStrikerStartPosition(holeIndex,
 						aiPlayer.shootingRectIndex, p, board, striker);
+
+				// /**
+				// * while simulating shots with the target cm, striker might
+				// * touch other cms on the way. Make a list of the cm which may
+				// * be on the way.
+				// */
+				// cmsOntheWay.clear();
 
 				while (null != strikerPos) {
 
@@ -438,6 +458,7 @@ public class AIPlayerImpl extends AIPlayer {
 									cmToHoleVector.y, cmToHoleVector.x));
 
 					Vector2f finalVfCm = null;
+					boolean intersectsWithOtherCm = false;
 					for (float a = 0; a < totalArcLen; a += 0.005) {
 						// TODO to figure out an efficient way, for finding
 						// intersecting cm in the path of striker and target cm
@@ -450,6 +471,25 @@ public class AIPlayerImpl extends AIPlayer {
 
 						// rotate shooting line
 						shootingLine.rotateBy(0.005f);
+
+						testRect = makeRectFromLine(strikerPos.x, strikerPos.y,
+								cm.region.x, cm.region.y,
+								2 * striker.region.radius);
+
+						for (Piece piece : allOnBoardPieces) {
+							if (piece != cm) {
+								if (UtilityFunctions.CirclePolygonIntersection(
+										testRect, piece.region)) {
+									intersectsWithOtherCm = true;
+									break;
+								}
+							}
+						}
+
+						if (intersectsWithOtherCm) {
+							intersectsWithOtherCm = false;
+							continue;
+						}
 
 						// store final velocities
 						Vector2f vfStriker = new Vector2f(0, 0), vfCm = new Vector2f(
@@ -493,19 +533,22 @@ public class AIPlayerImpl extends AIPlayer {
 					shot.strikerVelocity = shot.strikerVelocity.unitVector()
 							.mulScalar(STRIKER_INIT_SPEED_DIRECT_SHOT);
 
-					line4 = new PolarLine(cmCopy.region.x, cmCopy.region.y,
-							cmToHoleVector.mag(), (float) Math.atan2(
-									finalVfCm.y, finalVfCm.x));
+					if (finalVfCm != null) {
+						line4 = new PolarLine(cmCopy.region.x, cmCopy.region.y,
+								cmToHoleVector.mag(), (float) Math.atan2(
+										finalVfCm.y, finalVfCm.x));
 
-					// check if the shot is promising i.e. will it hit the
-					// hole. For this, check the angle between
-					// vfcm and position vector between cm and hole, if the
-					// angle is less than the angle made by an
-					// arc, with length equal to radius of hole. If so, it will
-					// hit the hole
-					if (isPromising(finalVfCm, cmToHoleVector, board)) {
-						promisingShotFound = true;
-						break;
+						// check if the shot is promising i.e. will it hit the
+						// hole. For this, check the angle between
+						// vfcm and position vector between cm and hole, if the
+						// angle is less than the angle made by an
+						// arc, with length equal to radius of hole. If so, it
+						// will
+						// hit the hole
+						if (isPromising(finalVfCm, cmToHoleVector, board)) {
+							promisingShotFound = true;
+							break;
+						}
 					}
 					strikerPos = getNextStrikerPosition(strikerPos, holeIndex,
 							aiPlayer.shootingRectIndex, striker, board);
@@ -548,12 +591,7 @@ public class AIPlayerImpl extends AIPlayer {
 					PointF mirroredPoint = null;
 					PointF mirroredHole = null;
 					if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT
-							&& (holeIndex == Board.BOTTOM_LEFT_HOLE /*
-																	 * ||
-																	 * holeIndex
-																	 * == Board.
-																	 * BOTTOM_RIGHT_HOLE
-																	 */)) {
+							&& (holeIndex == Board.BOTTOM_LEFT_HOLE || holeIndex == Board.BOTTOM_RIGHT_HOLE)) {
 						mirroredPoint = UtilityFunctions.mirrorXaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.top);
@@ -624,7 +662,8 @@ public class AIPlayerImpl extends AIPlayer {
 						// remember: position vector= target point - source
 						// point
 						Vector2f cmToHoleVector = new Vector2f(mirroredHole.x
-								- cmCopy.region.x, mirroredHole.y - cmCopy.region.y);
+								- cmCopy.region.x, mirroredHole.y
+								- cmCopy.region.y);
 
 						// range of acos is 0 to PI
 						float angleVfCmNCmToHoleVector = (float) Math.PI;
@@ -705,6 +744,7 @@ public class AIPlayerImpl extends AIPlayer {
 
 							strikerTest.region.x = sttx;
 							strikerTest.region.y = stty;
+							Log.d("carro", "rebound");
 							break;
 						}
 						strikerPos = getNextStrikerPosition(strikerPos,
@@ -715,6 +755,10 @@ public class AIPlayerImpl extends AIPlayer {
 
 				}
 			}
+		}
+
+		if (!promisingShotFound) {
+			Log.d("NoShot", "ds");
 		}
 
 		return shot;
@@ -786,7 +830,7 @@ public class AIPlayerImpl extends AIPlayer {
 		// here cm is always stationary and striker is moving
 		// first bring the striker near to cm, so that they are almost touching
 		// each other
-		// N - normalized vector of striker velocity
+		// N - normalised vector of striker velocity
 		Vector2f N = new Vector2f(striker.velocity);
 		N.normalize();
 
@@ -797,7 +841,7 @@ public class AIPlayerImpl extends AIPlayer {
 		// D - projection of C on the direction of striker velocity vector
 		float D = N.dot(C);
 
-		// F - shortest distance between striker velocity vector and cm's center
+		// F - shortest distance between striker velocity vector and cm's centre
 		float cMag = C.mag();
 		float Fsquare = cMag * cMag - D * D;
 
@@ -822,17 +866,15 @@ public class AIPlayerImpl extends AIPlayer {
 		striker.region.x = vLine.getFinalX();
 		striker.region.y = vLine.getFinalY();
 
-		Log.d(this.getClass().getName(),
-				"Striker touch point:" + striker.toString());
-
+	
 		strikerTest = new Piece(striker);
 		strikerTest.region.y = (-strikerTest.region.y + 36);
 
 		// now the striker and cm touch each other
 		// normal momentum conservation equation will work
 
-		// First, find the normalized vector n from the center of
-		// circle1 to the center of circle2
+		// First, find the normalised vector n from the centre of
+		// circle1 to the centre of circle2
 		Vector2f n = new Vector2f(cm.region.x - striker.region.x, cm.region.y
 				- striker.region.y);
 		n.normalize();
@@ -844,7 +886,7 @@ public class AIPlayerImpl extends AIPlayer {
 		float a1 = cm.velocity.dot(n);
 		float a2 = striker.velocity.dot(n);
 
-		// Using the optimized version,
+		// Using the optimised version,
 		// optimizedP = 2(a1 - a2)
 		// -----------
 		// m1 + m2

@@ -13,7 +13,6 @@ import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.util.UtilityFunctions;
 import android.graphics.PointF;
 import android.graphics.Rect;
-import android.util.Log;
 
 public class PhysicsManager {
 	private static final String TAG = PhysicsManager.class.getSimpleName();
@@ -219,7 +218,7 @@ public class PhysicsManager {
 			float t1 = -b - android.util.FloatMath.sqrt(disc) / (2 * a);
 			float t2 = -b + android.util.FloatMath.sqrt(disc) / (2 * a);
 			t = Math.min(t1, t2);
-			Log.d(TAG, "t1=" + t1 + ",t2=" + t2);
+//			Log.d(TAG, "t1=" + t1 + ",t2=" + t2);
 		}
 		return t / 100;
 	}
@@ -247,7 +246,7 @@ public class PhysicsManager {
 	 * @param b
 	 */
 	private void resolveCollisionByPConservation(Piece a, Piece b) {
-		Log.d(TAG, a.toString() + " " + b.toString());
+//		Log.d(TAG, a.toString() + " " + b.toString());
 
 		// First, find the normalized vector n from the center of
 		// circle1 to the center of circle2

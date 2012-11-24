@@ -3,10 +3,8 @@ package net.ripper.carrom.managers;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 
-import net.ripper.carrom.managers.RuleManager.Result;
 import net.ripper.carrom.managers.clients.IGameManagerClient;
 import net.ripper.carrom.managers.clients.IPhysicsManagerClient;
 import net.ripper.carrom.managers.model.Player;
@@ -19,7 +17,6 @@ import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.Piece.PieceType;
 import net.ripper.carrom.model.components.Circle;
 import net.ripper.carrom.model.components.Vector2f;
-import net.ripper.util.Clock;
 import net.ripper.util.UtilityFunctions;
 import android.graphics.Color;
 import android.graphics.PointF;
@@ -52,10 +49,34 @@ public class GameManager implements IPhysicsManagerClient,
 	public Board board;
 
 	// its a square board
-	private final int BOARD_SIZE = 300;
 	private final int NUM_CARROM_MEN = 9;
-	private final int CARROM_MEN_RADIUS = 6;
-	private final int STRIKER_RADIUS = 8;
+	private int carromMenRadius;
+	private int strikerRadius;
+	private int boardSize;
+
+	public int getBoardSize() {
+		return boardSize;
+	}
+
+	public void setBoardSize(int boardSize) {
+		this.boardSize = boardSize;
+	}
+
+	public int getCarromMenRadius() {
+		return carromMenRadius;
+	}
+
+	public void setCarromMenRadius(int carromMenRadius) {
+		this.carromMenRadius = carromMenRadius;
+	}
+
+	public int getStrikerRadius() {
+		return strikerRadius;
+	}
+
+	public void setStrikerRadius(int strikerRadius) {
+		this.strikerRadius = strikerRadius;
+	}
 
 	private RuleManager ruleManager;
 	List<Piece> pottedPieces;
@@ -74,7 +95,7 @@ public class GameManager implements IPhysicsManagerClient,
 		PointF[] c4 = new PointF[4];
 		PointF[] c5 = new PointF[3];
 
-		float sX = cX - (float) Math.sqrt(3) * 2 * r;
+		float sX = cX - android.util.FloatMath.sqrt(3) * 2 * r;
 		float sY = cY - 2 * r;
 
 		for (int i = 0; i < c1.length; i++) {
@@ -82,8 +103,8 @@ public class GameManager implements IPhysicsManagerClient,
 			sY = sY + 2 * r;
 		}
 
-		sX = (float) (cX - Math.sqrt(3) * r);
-		sY = (float) (cY - 3 * r);
+		sX = (cX - android.util.FloatMath.sqrt(3) * r);
+		sY = (cY - 3 * r);
 		for (int i = 0; i < c2.length; i++) {
 			c2[i] = new PointF(sX, sY);
 			sY = sY + 2 * r;
@@ -96,14 +117,14 @@ public class GameManager implements IPhysicsManagerClient,
 			sY = sY + 2 * r;
 		}
 
-		sX = (float) (cX + Math.sqrt(3) * r);
-		sY = (float) (cY - 3 * r);
+		sX = (cX + android.util.FloatMath.sqrt(3) * r);
+		sY = (cY - 3 * r);
 		for (int i = 0; i < c2.length; i++) {
 			c4[i] = new PointF(sX, sY);
 			sY = sY + 2 * r;
 		}
 
-		sX = cX + (float) Math.sqrt(3) * 2 * r;
+		sX = cX + android.util.FloatMath.sqrt(3) * 2 * r;
 		sY = cY - 2 * r;
 		for (int i = 0; i < c1.length; i++) {
 			c5[i] = new PointF(sX, sY);
@@ -120,16 +141,19 @@ public class GameManager implements IPhysicsManagerClient,
 
 	private PointF[] whitePiecesInitPos = null;
 
-	private Clock clock;
-
 	public enum GameState {
 		STRIKER_POSITIONING, STRIKER_AIMING, STRIKER_SHOT_POWER, STRIKER_SHOT_TAKEN, FOUL_COMMITED, QUEEN_TAKEN_COVER_NEEDED
 	};
 
 	public GameState gameState = GameState.STRIKER_POSITIONING;
 
-	public GameManager(int numPlayers) {
-		clock = new Clock();
+	public GameManager(int numPlayers, int strikerRadius, int carromMenRadius,
+			int boardSize) {
+
+		this.strikerRadius = strikerRadius;
+		this.carromMenRadius = carromMenRadius;
+		this.boardSize = boardSize;
+
 		clients = new ArrayList<IGameManagerClient>();
 		pottedPieces = new ArrayList<Piece>();
 
@@ -164,7 +188,7 @@ public class GameManager implements IPhysicsManagerClient,
 		queen.board = this.board;
 		queen.pieceType = PieceType.QUEEN;
 		queen.color = Color.RED;
-		queen.region = new Circle(CARROM_MEN_RADIUS, board.centerCircle.x,
+		queen.region = new Circle(carromMenRadius, board.centerCircle.x,
 				board.centerCircle.y);
 		queen.velocity = new Vector2f(0, 0);
 		queen.mass = 5;
@@ -174,7 +198,7 @@ public class GameManager implements IPhysicsManagerClient,
 		striker.board = board;
 		striker.pieceType = PieceType.STRIKER;
 		striker.color = Color.BLUE;
-		striker.region = new Circle(STRIKER_RADIUS,
+		striker.region = new Circle(strikerRadius,
 				board.shootingRect[this.players[0].shootingRectIndex]
 						.exactCenterX(),
 				board.shootingRect[this.players[0].shootingRectIndex]
@@ -192,12 +216,12 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.board = this.board;
 			piece.pieceType = PieceType.BLACK;
 			piece.color = Color.BLACK;
-			piece.region = new Circle(CARROM_MEN_RADIUS,
-					blackPiecesInitPos[i].x, blackPiecesInitPos[i].y);
+			piece.region = new Circle(carromMenRadius, blackPiecesInitPos[i].x,
+					blackPiecesInitPos[i].y);
 			piece.velocity = new Vector2f(0, 0);
 			piece.mass = 5;
 			blackPieces.add(piece);
-			piece.inHole = true;
+			piece.inHole = false;
 		}
 
 		whitePieces = new HashSet<Piece>();
@@ -207,40 +231,46 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.board = this.board;
 			piece.pieceType = PieceType.WHITE;
 			piece.color = Color.WHITE;
-			piece.region = new Circle(CARROM_MEN_RADIUS,
-					whitePiecesInitPos[i].x, whitePiecesInitPos[i].y);
+			piece.region = new Circle(carromMenRadius, whitePiecesInitPos[i].x,
+					whitePiecesInitPos[i].y);
 			piece.velocity = new Vector2f(0, 0);
 			piece.mass = 5;
 			whitePieces.add(piece);
-			piece.inHole = true;
+			piece.inHole = false;
 		}
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
 		physicsMgr.addPiece(striker);
 
-//		physicsMgr.addPiece(queen);
-		queen.inHole = true;
+		physicsMgr.addPiece(queen);
+		queen.inHole = false;
 
 		// queen.region.x = 110;
 
-		 Piece tmp = (Piece) whitePieces.toArray()[0];
-		 tmp.inHole = false;
-		 physicsMgr.addPiece(tmp);
-		 tmp.region.x = 35;
-		 tmp.region.y = 240;
-		
+		// Piece tmp = (Piece) whitePieces.toArray()[0];
+		// tmp.inHole = false;
+		// physicsMgr.addPiece(tmp);
+		// tmp.region.x = 100;
+		// tmp.region.y = 130;
+		//
 		// tmp = (Piece) blackPieces.toArray()[0];
 		// tmp.inHole = false;
 		// physicsMgr.addPiece(tmp);
-		// tmp.region.x = 120;
-		// tmp.region.y = 200;
-//		for (Piece piece : blackPieces) {
-//			physicsMgr.addPiece(piece);
-//		}
-//		//
-//		for (Piece piece : whitePieces) {
-//			physicsMgr.addPiece(piece);
-//		}
+		// tmp.region.x = 98;
+		// tmp.region.y = 145;
+		//
+		// // tmp = (Piece) blackPieces.toArray()[0];
+		// // tmp.inHole = false;
+		// // physicsMgr.addPiece(tmp);
+		// // tmp.region.x = 120;
+		// // tmp.region.y = 200;
+		for (Piece piece : blackPieces) {
+			physicsMgr.addPiece(piece);
+		}
+		//
+		for (Piece piece : whitePieces) {
+			physicsMgr.addPiece(piece);
+		}
 		physicsMgr.registerClient(this);
 
 		// add holes as pieces
@@ -255,7 +285,7 @@ public class GameManager implements IPhysicsManagerClient,
 
 	private void init() {
 		// create board;
-		board = new Board(0, 0);
+		board = new Board(90, 10, boardSize);
 		initPieces();
 	}
 
