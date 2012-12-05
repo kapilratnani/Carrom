@@ -148,7 +148,7 @@ public class GameManager implements IPhysicsManagerClient,
 	public GameState gameState = GameState.STRIKER_POSITIONING;
 
 	public GameManager(int numPlayers, int strikerRadius, int carromMenRadius,
-			int boardSize) {
+			int boardSize, int panelWidth, int panelHeight) {
 
 		this.strikerRadius = strikerRadius;
 		this.carromMenRadius = carromMenRadius;
@@ -164,10 +164,14 @@ public class GameManager implements IPhysicsManagerClient,
 		}
 		players[0].pieceType = PieceType.WHITE;
 		players[1].pieceType = PieceType.BLACK;
+		players[1].shootingRectIndex = Board.TOP_SHOOTING_RECT;
+		players[1].aiPlayer = true;
 
 		ruleManager = new ICFRuleManager(players);
 
-		init();
+		board = new Board((panelWidth - boardSize) / 2,
+				(panelHeight - boardSize) / 2, boardSize);
+		initPieces();
 
 	}
 
@@ -283,12 +287,6 @@ public class GameManager implements IPhysicsManagerClient,
 
 	}
 
-	private void init() {
-		// create board;
-		board = new Board(90, 10, boardSize);
-		initPieces();
-	}
-
 	public float update() {
 		float nextCollisionTime = physicsMgr.update();
 		return nextCollisionTime;
@@ -306,7 +304,10 @@ public class GameManager implements IPhysicsManagerClient,
 		if (result.resultFlag == ruleManager.FOUL_POTTED_STRIKER) {
 			// collect dues
 			striker.inHole = false;
+
 			physicsMgr.addPiece(striker);
+		} else if (result.resultFlag == ruleManager.FOUL_POTTED_ENEMY_PIECE) {
+
 		} else if (result.resultFlag == ruleManager.RESET_GAME) {
 			// reset board start a new game
 		} else if (result.resultFlag == ruleManager.WIN) {
@@ -326,6 +327,11 @@ public class GameManager implements IPhysicsManagerClient,
 		this.striker.region.y = this.board.shootingRect[players[currentPlayerIndex].shootingRectIndex]
 				.exactCenterY();
 		shotFinishedNotifyClients();
+		if (this.players[currentPlayerIndex].aiPlayer) {
+			for (IGameManagerClient client : clients) {
+				client.callAI();
+			}
+		}
 	}
 
 	public void takeShot(float vx, float vy) {

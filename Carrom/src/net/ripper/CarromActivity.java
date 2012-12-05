@@ -22,6 +22,9 @@ public class CarromActivity extends Activity {
 		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		
+		MainGamePanel.PANEL_HEIGHT=this.getWindowManager().getDefaultDisplay().getHeight();
+		MainGamePanel.PANEL_WIDTH=this.getWindowManager().getDefaultDisplay().getWidth();
 		setContentView(new MainGamePanel(this));
 	}
 	

@@ -24,8 +24,8 @@ public class AIPlayerImpl extends AIPlayer {
 	/**
 	 * speed in pixels/frame
 	 */
-	private static final int STRIKER_INIT_SPEED_DIRECT_SHOT = 7;
-	private static final int STRIKER_INIT_SPEED_REBOUND_SHOT = 10;
+	public static int strikerInitSpeedDirectShot = 7;
+	public static int strikerInitSpeedReboundShot = 10;
 
 	/**
 	 * contains a mapping of c/m to rect which represents the motion of c/m
@@ -501,7 +501,7 @@ public class AIPlayerImpl extends AIPlayer {
 								shootingLine.getFinalY() - shootingLine.originY);
 
 						strikerCopy.velocity = velDirection.unitVector()
-								.mulScalar(STRIKER_INIT_SPEED_DIRECT_SHOT);
+								.mulScalar(strikerInitSpeedDirectShot);
 
 						simulateCollision(cmCopy, strikerCopy, vfCm, vfStriker);
 
@@ -524,14 +524,14 @@ public class AIPlayerImpl extends AIPlayer {
 					shot.strikerX = stX;
 					shot.strikerY = stY;
 					shot.angle = shotAngle;
-					shot.v = STRIKER_INIT_SPEED_DIRECT_SHOT;
+					shot.v = strikerInitSpeedDirectShot;
 
 					shootingLine.rotateTo(shotAngle);
 					shot.strikerVelocity = new Vector2f(
 							shootingLine.getFinalX() - shootingLine.originX,
 							shootingLine.getFinalY() - shootingLine.originY);
 					shot.strikerVelocity = shot.strikerVelocity.unitVector()
-							.mulScalar(STRIKER_INIT_SPEED_DIRECT_SHOT);
+							.mulScalar(strikerInitSpeedDirectShot);
 
 					if (finalVfCm != null) {
 						line4 = new PolarLine(cmCopy.region.x, cmCopy.region.y,
@@ -699,7 +699,7 @@ public class AIPlayerImpl extends AIPlayer {
 											- shootingLine.originY);
 
 							strikerCopy.velocity = velDirection.unitVector()
-									.mulScalar(STRIKER_INIT_SPEED_REBOUND_SHOT);
+									.mulScalar(strikerInitSpeedReboundShot);
 
 							simulateCollision(cmCopy, strikerCopy, vfCm,
 									vfStriker);
@@ -722,7 +722,7 @@ public class AIPlayerImpl extends AIPlayer {
 						shot.strikerX = stX;
 						shot.strikerY = stY;
 						shot.angle = shotAngle;
-						shot.v = STRIKER_INIT_SPEED_REBOUND_SHOT;
+						shot.v = strikerInitSpeedReboundShot;
 
 						shootingLine.rotateTo(shotAngle);
 						shot.strikerVelocity = new Vector2f(
@@ -730,7 +730,7 @@ public class AIPlayerImpl extends AIPlayer {
 								shootingLine.getFinalY() - shootingLine.originY);
 						shot.strikerVelocity = shot.strikerVelocity
 								.unitVector().mulScalar(
-										STRIKER_INIT_SPEED_REBOUND_SHOT);
+										strikerInitSpeedReboundShot);
 
 						// check if the shot is promising i.e. will it hit the
 						// hole. For this, check the angle between
@@ -866,7 +866,6 @@ public class AIPlayerImpl extends AIPlayer {
 		striker.region.x = vLine.getFinalX();
 		striker.region.y = vLine.getFinalY();
 
-	
 		strikerTest = new Piece(striker);
 		strikerTest.region.y = (-strikerTest.region.y + 36);
 

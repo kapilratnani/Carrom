@@ -39,8 +39,8 @@ public class Board {
 	public static final int BOTTOM_LEFT_HOLE = 3;
 	public static final int BOTTOM_RIGHT_HOLE = 2;
 
-	private int posXOffset = 0;
-	private int posYOffset = 0;
+	public int posXOffset = 0;
+	public int posYOffset = 0;
 
 	// board
 	// 300X300

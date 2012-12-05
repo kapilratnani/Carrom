@@ -1,6 +1,5 @@
 package net.ripper.carrom.managers.rulemanagers.impl;
 
-
 import java.util.List;
 import java.util.Set;
 
@@ -334,15 +333,19 @@ public class ICFRuleManager extends RuleManager {
 				// retain turn
 				result.nextPlayerIndex = playerIndex;
 				result.resultFlag = this.CONTINUE;
-			} else {
+			} else if ((curPlayer.pieceType == PieceType.BLACK && numCurrentWhitePieces > 0)
+					|| (curPlayer.pieceType == PieceType.WHITE && numCurrentBlackPieces > 0)) {
 				// queen was potted with an enemy piece
 				// return queen
-				result.queen=-1;
+				result.queen = -1;
+				result.nextPlayerIndex = getNextPlayer(playerIndex);
+			} else {
+				result.nextPlayerIndex = playerIndex;
+				result.resultFlag = this.CONTINUE;
 			}
-
 			// wait for cover
 		} else {
-			// this means it is waiting for cover
+			// this means waiting for cover
 			if (!scoredQueen && queen.inHole) {
 				if ((curPlayer.pieceType == PieceType.BLACK && numCurrentBlackPieces > 0)
 						|| (curPlayer.pieceType == PieceType.WHITE && numCurrentWhitePieces > 0)) {

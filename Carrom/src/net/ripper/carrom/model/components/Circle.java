@@ -33,6 +33,22 @@ public class Circle {
 			return false;
 	}
 
+	public boolean isPointNearBy(float px, float py,float minDist) {
+		float dx = Math.abs(px - this.x);
+		float dy = Math.abs(py - this.y);
+
+		if (dx + dy <= minDist)
+			return true;
+		if (dx > minDist)
+			return false;
+		if (dy > minDist)
+			return false;
+		if (dx * dx + dy * dy <= minDist * minDist)
+			return true;
+		else
+			return false;
+	}
+
 	@Override
 	public String toString() {
 		return "< r=" + radius + " x=" + x + " y=" + y + " >";
