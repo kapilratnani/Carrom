@@ -98,16 +98,16 @@ public class MainGamePanel extends SurfaceView implements
 		// scale ai player shooting velocity
 		if (carromBoard.getHeight() == 300) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 7;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 10;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 12;
 		} else if (carromBoard.getHeight() == 600) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 14;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 20;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 22;
 		} else if (carromBoard.getHeight() == 450) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 10;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 15;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 17;
 		} else if (carromBoard.getHeight() == 225) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 5;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 8;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 10;
 		}
 
 		fpsPaint = new Paint();
@@ -161,6 +161,8 @@ public class MainGamePanel extends SurfaceView implements
 		aiRectPaint.setAntiAlias(true);
 		aiRectPaint.setStyle(Style.STROKE);
 	}
+	
+	
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
@@ -200,11 +202,6 @@ public class MainGamePanel extends SurfaceView implements
 
 	@Override
 	public boolean onTouchEvent(MotionEvent e) {
-		// if (this.gameManager.gameState == GameState.STRIKER_SHOT_POWER) {
-		// if (e.getX() > this.getWidth() - 50
-		// && this.gameManager.gameState != GameState.STRIKER_SHOT_TAKEN) {
-		//
-		// } else
 		if (this.gameManager.gameState == GameState.STRIKER_POSITIONING) {
 			int px = (int) e.getX();
 			int py = (int) e.getY();

@@ -14,6 +14,7 @@ import net.ripper.carrom.model.components.Circle;
 import net.ripper.carrom.model.components.PolarLine;
 import net.ripper.carrom.model.components.Polygon;
 import net.ripper.carrom.model.components.Vector2f;
+import net.ripper.util.MutableFloat;
 import net.ripper.util.UtilityFunctions;
 import android.graphics.PointF;
 import android.graphics.Rect;
@@ -111,6 +112,7 @@ public class AIPlayerImpl extends AIPlayer {
 		PointF stPos = null;
 		Rect shootingRect;
 		float stX = 0, stY = 0;
+
 		/**
 		 * The trick is to return a position on the shooting rect from which if
 		 * the cm is hit by the striker, it will go towards the current hole.
@@ -201,13 +203,13 @@ public class AIPlayerImpl extends AIPlayer {
 
 			if (Board.TOP_LEFT_HOLE == holeIndex
 					|| Board.BOTTOM_LEFT_HOLE == holeIndex) {
-				stX = currentPosition.x + striker.region.radius;
+				stX = currentPosition.x + striker.region.radius / 2;
 				if (stX > (shootingRect.right - striker.region.radius)) {
 					stX = currentPosition.x;
 				}
 			} else if (Board.TOP_RIGHT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
-				stX = currentPosition.x - striker.region.radius;
+				stX = currentPosition.x - striker.region.radius / 2;
 				if (stX < (shootingRect.left + striker.region.radius)) {
 					stX = currentPosition.x;
 				}
@@ -223,13 +225,13 @@ public class AIPlayerImpl extends AIPlayer {
 			if (Board.TOP_LEFT_HOLE == holeIndex
 					|| Board.TOP_RIGHT_HOLE == holeIndex) {
 
-				stY = currentPosition.y + striker.region.radius;
+				stY = currentPosition.y + striker.region.radius / 2;
 				if (stY > (shootingRect.bottom - striker.region.radius)) {
 					stY = currentPosition.y;
 				}
 			} else if (Board.BOTTOM_LEFT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
-				stX = currentPosition.y - striker.region.radius;
+				stX = currentPosition.y - striker.region.radius / 2;
 				if (stY < (shootingRect.top + striker.region.radius)) {
 					stY = currentPosition.y;
 				}
@@ -250,6 +252,12 @@ public class AIPlayerImpl extends AIPlayer {
 			Piece striker, Piece queen, Board board, Player aiPlayer) {
 		Circle[] holes = board.holes;
 		Shot shot = null;
+		Shot directShot = null;
+		Shot reboundShot = null;
+		List<Shot> directShots = new ArrayList<Shot>();
+		List<Shot> reboundShots = new ArrayList<Shot>();
+		MutableFloat diff = new MutableFloat(0);
+		boolean intersectsWithOtherCm = false;
 		// all pieces which are on board
 		allOnBoardPieces.clear();
 		pieceToDirectShotPolygonMap.clear();
@@ -458,8 +466,9 @@ public class AIPlayerImpl extends AIPlayer {
 									cmToHoleVector.y, cmToHoleVector.x));
 
 					Vector2f finalVfCm = null;
-					boolean intersectsWithOtherCm = false;
+
 					for (float a = 0; a < totalArcLen; a += 0.005) {
+						intersectsWithOtherCm = false;
 						// TODO to figure out an efficient way, for finding
 						// intersecting cm in the path of striker and target cm
 
@@ -520,18 +529,18 @@ public class AIPlayerImpl extends AIPlayer {
 										vfCm.y, vfCm.x));
 
 					}
-					shot = new Shot();
-					shot.strikerX = stX;
-					shot.strikerY = stY;
-					shot.angle = shotAngle;
-					shot.v = strikerInitSpeedDirectShot;
+					directShot = new Shot();
+					directShot.strikerX = stX;
+					directShot.strikerY = stY;
+					directShot.angle = shotAngle;
+					directShot.v = strikerInitSpeedDirectShot;
 
 					shootingLine.rotateTo(shotAngle);
-					shot.strikerVelocity = new Vector2f(
+					directShot.strikerVelocity = new Vector2f(
 							shootingLine.getFinalX() - shootingLine.originX,
 							shootingLine.getFinalY() - shootingLine.originY);
-					shot.strikerVelocity = shot.strikerVelocity.unitVector()
-							.mulScalar(strikerInitSpeedDirectShot);
+					directShot.strikerVelocity = directShot.strikerVelocity
+							.unitVector().mulScalar(strikerInitSpeedDirectShot);
 
 					if (finalVfCm != null) {
 						line4 = new PolarLine(cmCopy.region.x, cmCopy.region.y,
@@ -545,10 +554,14 @@ public class AIPlayerImpl extends AIPlayer {
 						// arc, with length equal to radius of hole. If so, it
 						// will
 						// hit the hole
-						if (isPromising(finalVfCm, cmToHoleVector, board)) {
+						if (isPromising(finalVfCm, cmToHoleVector, board, diff)) {
 							promisingShotFound = true;
+							shot = directShot;
+							shot.diff = diff.getNum();
 							break;
 						}
+						directShot.diff = diff.getNum();
+						directShots.add(directShot);
 					}
 					strikerPos = getNextStrikerPosition(strikerPos, holeIndex,
 							aiPlayer.shootingRectIndex, striker, board);
@@ -588,11 +601,11 @@ public class AIPlayerImpl extends AIPlayer {
 
 					Piece strikerCopy = new Piece(striker);
 					Piece cmCopy = new Piece(cm);
-					PointF mirroredPoint = null;
+					PointF mirroredCmPoint = null;
 					PointF mirroredHole = null;
 					if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT
 							&& (holeIndex == Board.BOTTOM_LEFT_HOLE || holeIndex == Board.BOTTOM_RIGHT_HOLE)) {
-						mirroredPoint = UtilityFunctions.mirrorXaxis(
+						mirroredCmPoint = UtilityFunctions.mirrorXaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.top);
 
@@ -602,7 +615,7 @@ public class AIPlayerImpl extends AIPlayer {
 
 					} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT
 							&& (holeIndex == Board.BOTTOM_RIGHT_HOLE || holeIndex == Board.TOP_RIGHT_HOLE)) {
-						mirroredPoint = UtilityFunctions.mirrorYaxis(
+						mirroredCmPoint = UtilityFunctions.mirrorYaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.left);
 						mirroredHole = UtilityFunctions
@@ -611,7 +624,7 @@ public class AIPlayerImpl extends AIPlayer {
 										board.boundsRect.left);
 					} else if (aiPlayer.shootingRectIndex == Board.TOP_SHOOTING_RECT
 							&& (holeIndex == Board.TOP_LEFT_HOLE || holeIndex == Board.TOP_RIGHT_HOLE)) {
-						mirroredPoint = UtilityFunctions.mirrorXaxis(
+						mirroredCmPoint = UtilityFunctions.mirrorXaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.bottom);
 						mirroredHole = UtilityFunctions.mirrorXaxis(
@@ -620,7 +633,7 @@ public class AIPlayerImpl extends AIPlayer {
 								board.boundsRect.bottom);
 					} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT
 							&& (holeIndex == Board.TOP_LEFT_HOLE || holeIndex == Board.BOTTOM_LEFT_HOLE)) {
-						mirroredPoint = UtilityFunctions.mirrorYaxis(
+						mirroredCmPoint = UtilityFunctions.mirrorYaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.right);
 						mirroredHole = UtilityFunctions.mirrorYaxis(
@@ -632,8 +645,8 @@ public class AIPlayerImpl extends AIPlayer {
 						continue;
 					}
 
-					cmCopy.region.x = mirroredPoint.x;
-					cmCopy.region.y = mirroredPoint.y;
+					cmCopy.region.x = mirroredCmPoint.x;
+					cmCopy.region.y = mirroredCmPoint.y;
 
 					while (null != strikerPos) {
 
@@ -687,6 +700,54 @@ public class AIPlayerImpl extends AIPlayer {
 							// rotate shooting line
 							shootingLine.rotateBy(0.005f);
 
+							testRect = makeRectFromLine(strikerPos.x,
+									strikerPos.y, cmCopy.region.x,
+									cmCopy.region.y, 2 * striker.region.radius);
+
+							for (Piece piece : allOnBoardPieces) {
+								if (piece != cm) {
+									Circle testCircle = new Circle(
+											piece.region.radius, 0, 0);
+									if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
+										mirroredCmPoint = UtilityFunctions
+												.mirrorXaxis(piece.region.x,
+														piece.region.y,
+														board.boundsRect.top);
+									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
+										mirroredCmPoint = UtilityFunctions
+												.mirrorYaxis(piece.region.x,
+														piece.region.y,
+														board.boundsRect.left);
+
+									} else if (aiPlayer.shootingRectIndex == Board.TOP_SHOOTING_RECT) {
+										mirroredCmPoint = UtilityFunctions
+												.mirrorXaxis(piece.region.x,
+														piece.region.y,
+														board.boundsRect.bottom);
+									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
+										mirroredCmPoint = UtilityFunctions
+												.mirrorYaxis(piece.region.x,
+														piece.region.y,
+														board.boundsRect.right);
+
+									}
+									testCircle.x = mirroredCmPoint.x;
+									testCircle.y = mirroredCmPoint.y;
+
+									if (UtilityFunctions
+											.CirclePolygonIntersection(
+													testRect, testCircle)) {
+										intersectsWithOtherCm = true;
+										break;
+									}
+								}
+							}
+
+							if (intersectsWithOtherCm) {
+								intersectsWithOtherCm = false;
+								continue;
+							}
+
 							// store final velocities
 							Vector2f vfStriker = new Vector2f(0, 0), vfCm = new Vector2f(
 									0, 0);
@@ -718,17 +779,17 @@ public class AIPlayerImpl extends AIPlayer {
 							}
 
 						}
-						shot = new Shot();
-						shot.strikerX = stX;
-						shot.strikerY = stY;
-						shot.angle = shotAngle;
-						shot.v = strikerInitSpeedReboundShot;
+						reboundShot = new Shot();
+						reboundShot.strikerX = stX;
+						reboundShot.strikerY = stY;
+						reboundShot.angle = shotAngle;
+						reboundShot.v = strikerInitSpeedReboundShot;
 
 						shootingLine.rotateTo(shotAngle);
-						shot.strikerVelocity = new Vector2f(
+						reboundShot.strikerVelocity = new Vector2f(
 								shootingLine.getFinalX() - shootingLine.originX,
 								shootingLine.getFinalY() - shootingLine.originY);
-						shot.strikerVelocity = shot.strikerVelocity
+						reboundShot.strikerVelocity = reboundShot.strikerVelocity
 								.unitVector().mulScalar(
 										strikerInitSpeedReboundShot);
 
@@ -739,14 +800,18 @@ public class AIPlayerImpl extends AIPlayer {
 						// arc, with length equal to radius of hole. If so, it
 						// will
 						// hit the hole
-						if (isPromising(finalVfCm, cmToHoleVector, board)) {
+						if (isPromising(finalVfCm, cmToHoleVector, board, diff)) {
 							promisingShotFound = true;
 
 							strikerTest.region.x = sttx;
 							strikerTest.region.y = stty;
-							Log.d("carro", "rebound");
+							shot = reboundShot;
+							shot.diff = diff.getNum();
 							break;
 						}
+						reboundShot.diff = diff.getNum();
+						reboundShots.add(reboundShot);
+
 						strikerPos = getNextStrikerPosition(strikerPos,
 								holeIndex, aiPlayer.shootingRectIndex, striker,
 								board);
@@ -758,17 +823,70 @@ public class AIPlayerImpl extends AIPlayer {
 		}
 
 		if (!promisingShotFound) {
-			Log.d("NoShot", "ds");
+			// go through all shots collected and choose the one
+			// with the least diff value
+
+			float minDiff = Float.MAX_VALUE, len;
+			int i;
+			Shot minDiffShot = null;
+			if (directShots.size() > 0) {
+				len = directShots.size();
+				for (i = 0; i < len; i++) {
+					if (minDiff > directShots.get(i).diff) {
+						minDiffShot = directShots.get(i);
+						minDiff = minDiffShot.diff;
+					}
+				}
+				Log.e(this.getClass().getName(),"MinDiffDirect" );
+			}
+
+			if (minDiffShot == null) {
+				if (reboundShots.size() > 0) {
+					len = reboundShots.size();
+					for (i = 0; i < len; i++) {
+						if (minDiff > reboundShots.get(i).diff) {
+							minDiffShot = reboundShots.get(i);
+							minDiff = reboundShots.get(i).diff;
+						}
+					}
+				}
+				Log.e(this.getClass().getName(),"MinDiffRebound" );
+			}
+
+//			if (minDiffShot == null) {
+//				// try to hit any pottable cm directly
+//				// Set<Piece> pieces = pieceToDirectShotPolygonMap.keySet();
+//				// for (Piece cm : pieces) {
+//				// ArrayList<Polygon> polyPaths = pieceToDirectShotPolygonMap
+//				// .get(cm);
+//				// for (Polygon path : polyPaths) {
+//				// int holeIndex = path.tag;
+//				// strikerPos = getStrikerStartPosition(holeIndex,
+//				// aiPlayer.shootingRectIndex, path, board,
+//				// striker);
+//				//
+//				// }
+//				// }
+//				Log.e(this.getClass().getName(), "No MinDiffShot");
+//			} else {
+//				Log.e(this.getClass().getName(), "MinDiffShot");
+//			}
+			shot = minDiffShot;
+
+			Log.d(this.getClass().getName(), "NoPromisingShot");
 		}
 
 		return shot;
 	}
 
 	private boolean isPromising(Vector2f vfcm, Vector2f cmToHoleVector,
-			Board board) {
+			Board board, MutableFloat diff) {
+		if (vfcm == null || cmToHoleVector == null)
+			return false;
 		float angle = vfcm.angle(cmToHoleVector);
 		float holeRadius = board.holes[0].radius;
 		float arcAngle = holeRadius / cmToHoleVector.mag();
+		diff.setNum((float) Math.abs(angle - arcAngle));
 		return angle < arcAngle;
 	}
 

@@ -8,4 +8,5 @@ public class Shot {
 	public float angle;
 	public float strikerX;
 	public float strikerY;
+	public float diff;
 }

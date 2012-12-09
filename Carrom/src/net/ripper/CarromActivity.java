@@ -33,4 +33,5 @@ public class CarromActivity extends Activity {
 		//ignore config changes
 		super.onConfigurationChanged(newConfig);
 	}
+	
 }
