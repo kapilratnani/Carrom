@@ -257,11 +257,17 @@ public class GameManager implements IPhysicsManagerClient,
 		// tmp.region.x = 100;
 		// tmp.region.y = 130;
 		//
-		// tmp = (Piece) blackPieces.toArray()[0];
+		// Piece tmp = (Piece) blackPieces.toArray()[0];
 		// tmp.inHole = false;
 		// physicsMgr.addPiece(tmp);
-		// tmp.region.x = 98;
-		// tmp.region.y = 145;
+		// tmp.region.x = 218;
+		// tmp.region.y = 98;
+		//
+		// tmp = (Piece) blackPieces.toArray()[1];
+		// tmp.inHole = false;
+		// physicsMgr.addPiece(tmp);
+		// tmp.region.x = 418;
+		// tmp.region.y = 98;
 		//
 		// // tmp = (Piece) blackPieces.toArray()[0];
 		// // tmp.inHole = false;

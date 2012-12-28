@@ -168,13 +168,24 @@ public class PhysicsManager {
 
 			movingPiece.region.x = d.x - backDist * movingPieceVu.x;
 			movingPiece.region.y = d.y - backDist * movingPieceVu.y;
+
+		} else if (pieceA.isMoving() == false && pieceB.isMoving() == false) {
+			// static-static
+			float midPtX = (pieceA.region.x + pieceB.region.x) / 2;
+			float midPtY = (pieceA.region.y + pieceB.region.y) / 2;
+			float dist = UtilityFunctions.euclideanDistance(pieceA.region.x,
+					pieceA.region.y, pieceB.region.x, pieceB.region.y);
+			pieceA.region.x = midPtX + pieceA.region.radius
+					* (pieceA.region.x - pieceB.region.x) / dist;
+			pieceA.region.y = midPtY + pieceA.region.radius
+					* (pieceA.region.y - pieceB.region.y) / dist;
+
+			pieceB.region.x = midPtX + pieceB.region.radius
+					* (pieceB.region.x - pieceA.region.x) / dist;
+			pieceB.region.y = midPtY + pieceB.region.radius
+					* (pieceB.region.y - pieceA.region.y) / dist;
+
 		}
-		// } else if (pieceA.isMoving() == false && pieceB.isMoving() == false)
-		// { // static-static
-		//
-		// } else {
-		// // dynamic-dynamic
-		// }
 	}
 
 	private float getNextCollisionTime() {
@@ -218,7 +229,7 @@ public class PhysicsManager {
 			float t1 = -b - android.util.FloatMath.sqrt(disc) / (2 * a);
 			float t2 = -b + android.util.FloatMath.sqrt(disc) / (2 * a);
 			t = Math.min(t1, t2);
-//			Log.d(TAG, "t1=" + t1 + ",t2=" + t2);
+			// Log.d(TAG, "t1=" + t1 + ",t2=" + t2);
 		}
 		return t / 100;
 	}
@@ -246,7 +257,7 @@ public class PhysicsManager {
 	 * @param b
 	 */
 	private void resolveCollisionByPConservation(Piece a, Piece b) {
-//		Log.d(TAG, a.toString() + " " + b.toString());
+		// Log.d(TAG, a.toString() + " " + b.toString());
 
 		// First, find the normalized vector n from the center of
 		// circle1 to the center of circle2
@@ -311,10 +322,10 @@ public class PhysicsManager {
 			}
 
 			if (piece.region.y - piece.region.radius <= boundsRect.top) {
-//				float penetration = piece.region.radius - piece.region.y
-//						+ boundsRect.top;
-//				float t = Math.abs(penetration / piece.velocity.y);
-//				piece.region.x += -piece.velocity.x * t;
+				// float penetration = piece.region.radius - piece.region.y
+				// + boundsRect.top;
+				// float t = Math.abs(penetration / piece.velocity.y);
+				// piece.region.x += -piece.velocity.x * t;
 
 				piece.velocity.y = -piece.velocity.y;
 				piece.region.y = boundsRect.top + piece.region.radius;

@@ -87,4 +87,17 @@ public class Vector2f {
 		float n = this.dot(b);
 		return (float) Math.acos(n / (this.mag() * b.mag()));
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o == null) {
+			return false;
+		}
+		Vector2f other = ((Vector2f) o).unitVector();
+		Vector2f thisOne = this.unitVector();
+		if (other.x == thisOne.x && other.y == thisOne.y
+				&& this.mag() == ((Vector2f) o).mag())
+			return true;
+		return false;
+	}
 }

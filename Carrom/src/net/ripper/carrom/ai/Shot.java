@@ -9,4 +9,12 @@ public class Shot {
 	public float strikerX;
 	public float strikerY;
 	public float diff;
+
+	@Override
+	public boolean equals(Object o) {
+		if (o == null)
+			return false;
+		Shot other = (Shot) o;
+		return other.strikerVelocity.equals(this.strikerVelocity);
+	}
 }

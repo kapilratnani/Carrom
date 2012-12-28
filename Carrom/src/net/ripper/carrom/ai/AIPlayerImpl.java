@@ -42,6 +42,7 @@ public class AIPlayerImpl extends AIPlayer {
 
 	public Piece strikerTest;
 	float sttx, stty;
+	private Shot prevShot;
 
 	private Set<Piece> allOnBoardPieces = new HashSet<Piece>();
 
@@ -61,7 +62,7 @@ public class AIPlayerImpl extends AIPlayer {
 	 * check if the pottable c/m touches the shooting rect, if it does then
 	 * leave it. it can't be hit directly
 	 */
-	private boolean directShot(Player aiPlayer, Board board, Piece cm,
+	private boolean directShotTest(Player aiPlayer, Board board, Piece cm,
 			int holeIndex) {
 		/**
 		 * check if it touches the current shooting rect
@@ -299,9 +300,17 @@ public class AIPlayerImpl extends AIPlayer {
 		 * queen
 		 */
 		if (!queen.inHole) {
-			pottablePieces.add(queen);
+			pottablePieces.add(0, queen);
 			allOnBoardPieces.add(queen);
 		}
+
+		/**
+		 * early exit, if pottable pieces are zero
+		 */
+		// FIXME: temp exit, game manager will not call when their is nothing to
+		// shoot
+		if (pottablePieces.size() == 0)
+			return null;
 
 		/**
 		 * for each pottable c/m make a rect connecting the hole and cm make
@@ -322,7 +331,7 @@ public class AIPlayerImpl extends AIPlayer {
 				 * check if the cm can be potted via a direct shot or a rebound
 				 * shot
 				 */
-				if (directShot(aiPlayer, board, cm, holeIndex)) {
+				if (directShotTest(aiPlayer, board, cm, holeIndex)) {
 					directShotPath = true;
 				} else {
 					// can be potted via a rebound shot
@@ -700,53 +709,53 @@ public class AIPlayerImpl extends AIPlayer {
 							// rotate shooting line
 							shootingLine.rotateBy(0.005f);
 
-							testRect = makeRectFromLine(strikerPos.x,
-									strikerPos.y, cmCopy.region.x,
-									cmCopy.region.y, 2 * striker.region.radius);
-
-							for (Piece piece : allOnBoardPieces) {
-								if (piece != cm) {
-									Circle testCircle = new Circle(
-											piece.region.radius, 0, 0);
-									if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
-										mirroredCmPoint = UtilityFunctions
-												.mirrorXaxis(piece.region.x,
-														piece.region.y,
-														board.boundsRect.top);
-									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
-										mirroredCmPoint = UtilityFunctions
-												.mirrorYaxis(piece.region.x,
-														piece.region.y,
-														board.boundsRect.left);
-
-									} else if (aiPlayer.shootingRectIndex == Board.TOP_SHOOTING_RECT) {
-										mirroredCmPoint = UtilityFunctions
-												.mirrorXaxis(piece.region.x,
-														piece.region.y,
-														board.boundsRect.bottom);
-									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
-										mirroredCmPoint = UtilityFunctions
-												.mirrorYaxis(piece.region.x,
-														piece.region.y,
-														board.boundsRect.right);
-
-									}
-									testCircle.x = mirroredCmPoint.x;
-									testCircle.y = mirroredCmPoint.y;
-
-									if (UtilityFunctions
-											.CirclePolygonIntersection(
-													testRect, testCircle)) {
-										intersectsWithOtherCm = true;
-										break;
-									}
-								}
-							}
-
-							if (intersectsWithOtherCm) {
-								intersectsWithOtherCm = false;
-								continue;
-							}
+//							testRect = makeRectFromLine(strikerPos.x,
+//									strikerPos.y, cmCopy.region.x,
+//									cmCopy.region.y, 2 * striker.region.radius);
+//
+//							for (Piece piece : allOnBoardPieces) {
+//								if (piece != cm) {
+//									Circle testCircle = new Circle(
+//											piece.region.radius, 0, 0);
+//									if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
+//										mirroredCmPoint = UtilityFunctions
+//												.mirrorXaxis(piece.region.x,
+//														piece.region.y,
+//														board.boundsRect.top);
+//									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
+//										mirroredCmPoint = UtilityFunctions
+//												.mirrorYaxis(piece.region.x,
+//														piece.region.y,
+//														board.boundsRect.left);
+//
+//									} else if (aiPlayer.shootingRectIndex == Board.TOP_SHOOTING_RECT) {
+//										mirroredCmPoint = UtilityFunctions
+//												.mirrorXaxis(piece.region.x,
+//														piece.region.y,
+//														board.boundsRect.bottom);
+//									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
+//										mirroredCmPoint = UtilityFunctions
+//												.mirrorYaxis(piece.region.x,
+//														piece.region.y,
+//														board.boundsRect.right);
+//
+//									}
+//									testCircle.x = mirroredCmPoint.x;
+//									testCircle.y = mirroredCmPoint.y;
+//
+//									if (UtilityFunctions
+//											.CirclePolygonIntersection(
+//													testRect, testCircle)) {
+//										intersectsWithOtherCm = true;
+//										break;
+//									}
+//								}
+//							}
+//
+//							if (intersectsWithOtherCm) {
+//								intersectsWithOtherCm = false;
+//								continue;
+//							}
 
 							// store final velocities
 							Vector2f vfStriker = new Vector2f(0, 0), vfCm = new Vector2f(
@@ -828,54 +837,146 @@ public class AIPlayerImpl extends AIPlayer {
 
 			float minDiff = Float.MAX_VALUE, len;
 			int i;
-			Shot minDiffShot = null;
+			Shot lastPossibleShot = null;
 			if (directShots.size() > 0) {
 				len = directShots.size();
 				for (i = 0; i < len; i++) {
 					if (minDiff > directShots.get(i).diff) {
-						minDiffShot = directShots.get(i);
-						minDiff = minDiffShot.diff;
+						lastPossibleShot = directShots.get(i);
+						minDiff = lastPossibleShot.diff;
 					}
 				}
-				Log.e(this.getClass().getName(),"MinDiffDirect" );
+				Log.e(this.getClass().getName(), "MinDiffDirect");
+			} else {
+				Log.e(this.getClass().getName(), "NoDirectShots");
 			}
 
-			if (minDiffShot == null) {
+			if (lastPossibleShot == null) {
 				if (reboundShots.size() > 0) {
 					len = reboundShots.size();
 					for (i = 0; i < len; i++) {
 						if (minDiff > reboundShots.get(i).diff) {
-							minDiffShot = reboundShots.get(i);
+							lastPossibleShot = reboundShots.get(i);
 							minDiff = reboundShots.get(i).diff;
 						}
 					}
+					Log.e(this.getClass().getName(), "MinDiffRebound");
+				} else {
+					Log.e(this.getClass().getName(), "NoReboundShots");
 				}
-				Log.e(this.getClass().getName(),"MinDiffRebound" );
 			}
 
-//			if (minDiffShot == null) {
-//				// try to hit any pottable cm directly
-//				// Set<Piece> pieces = pieceToDirectShotPolygonMap.keySet();
-//				// for (Piece cm : pieces) {
-//				// ArrayList<Polygon> polyPaths = pieceToDirectShotPolygonMap
-//				// .get(cm);
-//				// for (Polygon path : polyPaths) {
-//				// int holeIndex = path.tag;
-//				// strikerPos = getStrikerStartPosition(holeIndex,
-//				// aiPlayer.shootingRectIndex, path, board,
-//				// striker);
-//				//
-//				// }
-//				// }
-//				Log.e(this.getClass().getName(), "No MinDiffShot");
-//			} else {
-//				Log.e(this.getClass().getName(), "MinDiffShot");
-//			}
-			shot = minDiffShot;
+			if (prevShot != null && prevShot.equals(lastPossibleShot)) {
+				/**
+				 * This happens when the ai gets stuck in some rebound shot.
+				 * Ignore the shot.
+				 */
+				lastPossibleShot = null;
+			}
+
+			if (lastPossibleShot == null) {
+				/**
+				 * Find a pottable piece which can be shot directly or via
+				 * rebound
+				 */
+				Piece cm;
+				Rect shootingRect = board.shootingRect[aiPlayer.shootingRectIndex];
+				boolean direct;
+				int playerShootingRectIndex = aiPlayer.shootingRectIndex;
+
+				direct = false;
+				cm = pottablePieces.get(0);
+				if (!UtilityFunctions.RectangleCircleIntersection(shootingRect,
+						cm.region)) {
+					if (playerShootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
+						if (cm.region.y < shootingRect.top) {
+							direct = true;
+						}
+					} else if (playerShootingRectIndex == Board.TOP_SHOOTING_RECT) {
+						if (cm.region.y > shootingRect.bottom) {
+							direct = true;
+						}
+					} else if (playerShootingRectIndex == Board.LEFT_SHOOTING_RECT) {
+						if (cm.region.x > shootingRect.right) {
+							direct = true;
+						}
+					} else /* Right shooting rect */{
+						if (cm.region.x < shootingRect.left) {
+							direct = true;
+						}
+					}
+				}
+
+				// calculate a vector towards the cm
+				lastPossibleShot = new Shot();
+				float stX, stY;
+				// decide striker position
+				if (playerShootingRectIndex == Board.TOP_SHOOTING_RECT
+						|| playerShootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
+					stY = striker.region.y;
+					// FIX ME: Temp method to set striker pos
+					if (cm.region.x >= board.centerCircle.x) {
+
+						stX = cm.region.x - striker.region.radius * 2;
+					} else {
+						stX = cm.region.x + striker.region.radius * 2;
+					}
+				} else {
+					stX = striker.region.x;
+					if (cm.region.y >= board.centerCircle.y) {
+						stY = cm.region.y - striker.region.radius * 2;
+					} else {
+						stY = cm.region.y + striker.region.radius * 2;
+					}
+				}
+				lastPossibleShot.strikerX = stX;
+				lastPossibleShot.strikerY = stY;
+				Vector2f shotVector = new Vector2f(0, 0);
+				if (direct) {
+					Log.d(this.getClass().getName(), "direct shot");
+					// calculate shot direction
+					shotVector.x = cm.region.x - stX;
+					shotVector.y = cm.region.y - stY;
+					shotVector = shotVector.unitVector().mulScalar(
+							strikerInitSpeedDirectShot);
+					lastPossibleShot.strikerVelocity = shotVector;
+				} else {
+					Log.d(this.getClass().getName(), "rebound shot");
+					PointF mirroredCmPoint = null;
+
+					if (playerShootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
+						mirroredCmPoint = UtilityFunctions.mirrorXaxis(
+								cm.region.x, cm.region.y, board.boundsRect.top);
+					} else if (playerShootingRectIndex == Board.TOP_SHOOTING_RECT) {
+						mirroredCmPoint = UtilityFunctions.mirrorXaxis(
+								cm.region.x, cm.region.y,
+								board.boundsRect.bottom);
+					} else if (playerShootingRectIndex == Board.LEFT_SHOOTING_RECT) {
+						mirroredCmPoint = UtilityFunctions
+								.mirrorYaxis(cm.region.x, cm.region.y,
+										board.boundsRect.left);
+					} else /* Right Shooting rect */{
+						mirroredCmPoint = UtilityFunctions.mirrorYaxis(
+								cm.region.x, cm.region.y,
+								board.boundsRect.right);
+					}
+					shotVector.x = mirroredCmPoint.x - stX;
+					shotVector.y = mirroredCmPoint.y - stY;
+					shotVector = shotVector.unitVector().mulScalar(
+							strikerInitSpeedReboundShot);
+					lastPossibleShot.strikerVelocity = shotVector;
+				}
+
+				Log.e(this.getClass().getName(), "No MinDiffShot");
+			} else {
+				Log.e(this.getClass().getName(), "MinDiffShot");
+			}
+			shot = lastPossibleShot;
 
 			Log.d(this.getClass().getName(), "NoPromisingShot");
 		}
 
+		prevShot = shot;
 		return shot;
 	}
 
