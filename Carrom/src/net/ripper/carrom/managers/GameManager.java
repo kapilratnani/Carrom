@@ -162,6 +162,7 @@ public class GameManager implements IPhysicsManagerClient,
 			players[i] = new Player();
 			players[i].shootingRectIndex = i;
 		}
+
 		players[0].pieceType = PieceType.WHITE;
 		players[1].pieceType = PieceType.BLACK;
 		players[1].shootingRectIndex = Board.TOP_SHOOTING_RECT;
@@ -171,6 +172,7 @@ public class GameManager implements IPhysicsManagerClient,
 
 		board = new Board((panelWidth - boardSize) / 2,
 				(panelHeight - boardSize) / 2, boardSize);
+
 		initPieces();
 
 	}
@@ -196,6 +198,7 @@ public class GameManager implements IPhysicsManagerClient,
 				board.centerCircle.y);
 		queen.velocity = new Vector2f(0, 0);
 		queen.mass = 5;
+		queen.damping = 0.93f;
 
 		striker = new Piece();
 		striker.id = 1;
@@ -208,11 +211,11 @@ public class GameManager implements IPhysicsManagerClient,
 				board.shootingRect[this.players[0].shootingRectIndex]
 						.exactCenterY());
 		striker.velocity = new Vector2f(0, 0);
-		striker.mass = 10;
+		striker.mass = 15;
+		striker.damping = 0.97f;
 
 		genInitPoints(queen.region);
 
-		// FIXME Temporary AI testing hardcoding
 		blackPieces = new HashSet<Piece>();
 		for (int i = 0; i < NUM_CARROM_MEN; i++) {
 			Piece piece = new Piece();
@@ -226,6 +229,7 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.mass = 5;
 			blackPieces.add(piece);
 			piece.inHole = false;
+			piece.damping = 0.93f;
 		}
 
 		whitePieces = new HashSet<Piece>();
@@ -241,6 +245,7 @@ public class GameManager implements IPhysicsManagerClient,
 			piece.mass = 5;
 			whitePieces.add(piece);
 			piece.inHole = false;
+			piece.damping = 0.93f;
 		}
 
 		physicsMgr = new PhysicsManager(board.boundsRect);
@@ -249,31 +254,6 @@ public class GameManager implements IPhysicsManagerClient,
 		physicsMgr.addPiece(queen);
 		queen.inHole = false;
 
-		// queen.region.x = 110;
-
-		// Piece tmp = (Piece) whitePieces.toArray()[0];
-		// tmp.inHole = false;
-		// physicsMgr.addPiece(tmp);
-		// tmp.region.x = 100;
-		// tmp.region.y = 130;
-		//
-		// Piece tmp = (Piece) blackPieces.toArray()[0];
-		// tmp.inHole = false;
-		// physicsMgr.addPiece(tmp);
-		// tmp.region.x = 218;
-		// tmp.region.y = 98;
-		//
-		// tmp = (Piece) blackPieces.toArray()[1];
-		// tmp.inHole = false;
-		// physicsMgr.addPiece(tmp);
-		// tmp.region.x = 418;
-		// tmp.region.y = 98;
-		//
-		// // tmp = (Piece) blackPieces.toArray()[0];
-		// // tmp.inHole = false;
-		// // physicsMgr.addPiece(tmp);
-		// // tmp.region.x = 120;
-		// // tmp.region.y = 200;
 		for (Piece piece : blackPieces) {
 			physicsMgr.addPiece(piece);
 		}
@@ -305,15 +285,18 @@ public class GameManager implements IPhysicsManagerClient,
 
 		RuleManager.Result result = ruleManager.getResult(currentPlayerIndex,
 				pottedPieces, blackPieces, whitePieces, queen, striker);
-		// processResult
 
+		// processResult
 		if (result.resultFlag == ruleManager.FOUL_POTTED_STRIKER) {
 			// collect dues
 			striker.inHole = false;
 
 			physicsMgr.addPiece(striker);
-		} else if (result.resultFlag == ruleManager.FOUL_POTTED_ENEMY_PIECE) {
 
+			returnCoins(result);
+
+		} else if (result.resultFlag == ruleManager.FOUL_POTTED_ENEMY_PIECE) {
+			returnCoins(result);
 		} else if (result.resultFlag == ruleManager.RESET_GAME) {
 			// reset board start a new game
 		} else if (result.resultFlag == ruleManager.WIN) {
@@ -340,10 +323,61 @@ public class GameManager implements IPhysicsManagerClient,
 		}
 	}
 
+	private void returnCoins(RuleManager.Result result) {
+		/**
+		 * Negative coin count in result means, collect that coin as due
+		 * 
+		 */
+		if (result.black < 0) {
+			// find a in hole black piece and bring it to center
+			for (Piece blackPiece : this.blackPieces) {
+				if (result.black == 0)
+					break;
+
+				if (blackPiece.inHole) {
+					blackPiece.inHole = false;
+					physicsMgr.addPiece(blackPiece);
+					blackPiece.region.x = board.centerCircle.x;
+					blackPiece.region.y = board.centerCircle.y;
+					blackPiece.velocity.x = 0;
+					blackPiece.velocity.y = 0;
+					result.black++;
+				}
+			}
+		} else if (result.white < 0) {
+			// find a in hole black piece and bring it to center
+			for (Piece whitePiece : this.whitePieces) {
+				if (result.white == 0)
+					break;
+
+				if (whitePiece.inHole) {
+					whitePiece.inHole = false;
+					physicsMgr.addPiece(whitePiece);
+					whitePiece.region.x = board.centerCircle.x;
+					whitePiece.region.y = board.centerCircle.y;
+					whitePiece.velocity.x = 0;
+					whitePiece.velocity.y = 0;
+					result.white++;
+				}
+			}
+
+		} else if (result.queen < 0) {
+			if (queen.inHole) {
+				queen.inHole = false;
+				physicsMgr.addPiece(queen);
+				queen.region.x = board.centerCircle.x;
+				queen.region.y = board.centerCircle.y;
+				queen.velocity.x = 0;
+				queen.velocity.y = 0;
+			}
+		}
+	}
+
 	public void takeShot(float vx, float vy) {
 		physicsMgr.setPaused(false);
 		striker.velocity.x = vx;
 		striker.velocity.y = vy;
+		Log.d(TAG, striker.velocity.toString());
 	}
 
 	@Override

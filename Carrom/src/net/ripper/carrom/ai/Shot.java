@@ -17,4 +17,9 @@ public class Shot {
 		Shot other = (Shot) o;
 		return other.strikerVelocity.equals(this.strikerVelocity);
 	}
+
+	@Override
+	public String toString() {
+		return strikerX + "," + strikerY + "," + strikerVelocity.toString();
+	}
 }

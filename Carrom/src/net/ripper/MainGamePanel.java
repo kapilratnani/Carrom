@@ -5,13 +5,11 @@ import net.ripper.carrom.ai.Shot;
 import net.ripper.carrom.managers.GameManager;
 import net.ripper.carrom.managers.GameManager.GameState;
 import net.ripper.carrom.managers.clients.IGameManagerClient;
-import net.ripper.carrom.managers.model.Player;
 import net.ripper.carrom.model.Piece;
-import net.ripper.carrom.model.components.Circle;
 import net.ripper.carrom.model.components.PolarLine;
+import net.ripper.carrom.model.components.Vector2f;
 import net.ripper.carrom.renderer.RenderThread;
 import net.ripper.util.Clock;
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -65,6 +63,9 @@ public class MainGamePanel extends SurfaceView implements
 	Paint aiRectPaint;
 	AIPlayerImpl ai = new AIPlayerImpl();
 
+	int maxShotVx = 0;
+	int maxShotVy = 0;
+
 	public MainGamePanel(Context context) {
 		super(context);
 
@@ -96,18 +97,31 @@ public class MainGamePanel extends SurfaceView implements
 		gameManager.registerClient(this);
 
 		// scale ai player shooting velocity
+		// FIXME find a better way to fix shot speed
 		if (carromBoard.getHeight() == 300) {
-			AIPlayerImpl.strikerInitSpeedDirectShot = 7;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 12;
-		} else if (carromBoard.getHeight() == 600) {
-			AIPlayerImpl.strikerInitSpeedDirectShot = 14;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 22;
-		} else if (carromBoard.getHeight() == 450) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 10;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 17;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 18;
+		} else if (carromBoard.getHeight() == 600) {
+			AIPlayerImpl.strikerInitSpeedDirectShot = 20;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 36;
+		} else if (carromBoard.getHeight() == 450) {
+			AIPlayerImpl.strikerInitSpeedDirectShot = 15;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 27;
 		} else if (carromBoard.getHeight() == 225) {
 			AIPlayerImpl.strikerInitSpeedDirectShot = 5;
-			AIPlayerImpl.strikerInitSpeedReboundShot = 10;
+			AIPlayerImpl.strikerInitSpeedReboundShot = 13;
+		}
+
+		// scale ai player shooting velocity
+		// FIXME find a better way to fix shot speed
+		if (carromBoard.getHeight() == 300) {
+			maxShotVy = maxShotVx = 600;
+		} else if (carromBoard.getHeight() == 600) {
+			maxShotVy = maxShotVx = 1200;
+		} else if (carromBoard.getHeight() == 450) {
+			maxShotVy = maxShotVx = 900;
+		} else if (carromBoard.getHeight() == 225) {
+			maxShotVy = maxShotVx = 450;
 		}
 
 		fpsPaint = new Paint();
@@ -161,8 +175,6 @@ public class MainGamePanel extends SurfaceView implements
 		aiRectPaint.setAntiAlias(true);
 		aiRectPaint.setStyle(Style.STROKE);
 	}
-	
-	
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
@@ -257,9 +269,10 @@ public class MainGamePanel extends SurfaceView implements
 	}
 
 	@Override
-	public void onDraw(Canvas canvas) {
+	public void draw(Canvas canvas) {
 		if (canvas == null)
 			return;
+
 		// draw board
 		canvas.drawColor(Color.BLACK);
 		canvas.drawBitmap(carromBoard, this.gameManager.board.posXOffset,
@@ -352,6 +365,7 @@ public class MainGamePanel extends SurfaceView implements
 		// - ai.strikerTest.region.radius, null);
 		//
 		// }
+
 	}
 
 	public void drawGuide(Canvas canvas) {
@@ -376,19 +390,26 @@ public class MainGamePanel extends SurfaceView implements
 			float velocityY) {
 		if (this.gameManager.gameState == GameState.STRIKER_SHOT_POWER) {
 			if (this.gameManager.striker.region.isPointNearBy(e1.getX(),
-					e1.getY(), this.gameManager.striker.region.radius * 3)) {
-				float vx = Math.abs(velocityX) > 500 ? Math.signum(velocityX) * 500
-						: velocityX;
+					e1.getY(), this.gameManager.striker.region.radius * 4)) {
+				Log.d(TAG, velocityX + "," + velocityY);
+				float vx = Math.signum(velocityX) * (velocityX % maxShotVx);
 
-				float vy = Math.abs(velocityY) > 500 ? Math.signum(velocityY) * 500
-						: velocityY;
+				float vy = Math.signum(velocityY) * (velocityY % maxShotVy);
+
+				Log.d(TAG, vx + "," + vy);
+
 				float resultant = android.util.FloatMath
 						.sqrt(vx * vx + vy * vy);
 
-				vx = (resultant * android.util.FloatMath.cos(guideLine.theta));
-				vy = (resultant * android.util.FloatMath.sin(guideLine.theta));
+				Vector2f shotDirection = (new Vector2f(guideLine.getFinalX()
+						- guideLine.originX, guideLine.getFinalY()
+						- guideLine.originY)).unitVector();
 
-				this.gameManager.takeShot(vx / 50, vy / 50);
+				Vector2f shotVelocity = shotDirection.mulScalar(resultant / 30);
+
+				Log.d(TAG, vx + "," + vy);
+
+				this.gameManager.takeShot(shotVelocity.x, shotVelocity.y);
 
 				this.gameManager.gameState = GameState.STRIKER_SHOT_TAKEN;
 			}

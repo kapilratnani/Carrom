@@ -21,6 +21,7 @@ public class Piece {
 	public Board board;
 	public float mass = 0;
 	public boolean inHole = false;
+	public float damping = 0.96f;
 
 	public enum PieceType {
 		BLACK, WHITE, STRIKER, QUEEN, HOLE

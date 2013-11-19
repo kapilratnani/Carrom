@@ -21,12 +21,13 @@ import android.graphics.Rect;
 import android.util.Log;
 
 public class AIPlayerImpl extends AIPlayer {
+	private static final String TAG = AIPlayerImpl.class.getSimpleName();
 
 	/**
 	 * speed in pixels/frame
 	 */
-	public static int strikerInitSpeedDirectShot = 7;
-	public static int strikerInitSpeedReboundShot = 10;
+	public static int strikerInitSpeedDirectShot = 20;
+	public static int strikerInitSpeedReboundShot = 25;
 
 	/**
 	 * contains a mapping of c/m to rect which represents the motion of c/m
@@ -129,14 +130,14 @@ public class AIPlayerImpl extends AIPlayer {
 				stX = rightPoint.x;
 				if (stX < (shootingRect.left + striker.region.radius)) {
 					stX = shootingRect.left + striker.region.radius;
-				} else if (stX > (shootingRect.right - striker.region.radius)) {
+				} else if (stX >= (shootingRect.right - striker.region.radius)) {
 					stX = shootingRect.right - striker.region.radius;
 				}
 			} else if (Board.TOP_RIGHT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
 				PointF leftPoint = cmToHoleRect.getLeftMostPoint();
 				stX = leftPoint.x;
-				if (stX > (shootingRect.right - striker.region.radius)) {
+				if (stX >= (shootingRect.right - striker.region.radius)) {
 					stX = shootingRect.right - striker.region.radius;
 				} else if (stX < (shootingRect.left + striker.region.radius)) {
 					stX = shootingRect.left + striker.region.radius;
@@ -200,18 +201,26 @@ public class AIPlayerImpl extends AIPlayer {
 		 */
 		if (Board.BOTTOM_SHOOTING_RECT == shootingRectIndex
 				|| Board.TOP_SHOOTING_RECT == shootingRectIndex) {
+
 			shootingRect = board.shootingRect[shootingRectIndex];
 
 			if (Board.TOP_LEFT_HOLE == holeIndex
 					|| Board.BOTTOM_LEFT_HOLE == holeIndex) {
 				stX = currentPosition.x + striker.region.radius / 2;
-				if (stX > (shootingRect.right - striker.region.radius)) {
+				/**
+				 * check if the striker has moved out of current shooting rect
+				 */
+				if (stX >= (shootingRect.right - striker.region.radius)) {
 					stX = currentPosition.x;
 				}
 			} else if (Board.TOP_RIGHT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
 				stX = currentPosition.x - striker.region.radius / 2;
-				if (stX < (shootingRect.left + striker.region.radius)) {
+				/**
+				 * check if the striker has moved out of current shooting rect
+				 */
+
+				if (stX <= (shootingRect.left + striker.region.radius)) {
 					stX = currentPosition.x;
 				}
 
@@ -227,13 +236,20 @@ public class AIPlayerImpl extends AIPlayer {
 					|| Board.TOP_RIGHT_HOLE == holeIndex) {
 
 				stY = currentPosition.y + striker.region.radius / 2;
-				if (stY > (shootingRect.bottom - striker.region.radius)) {
+
+				/**
+				 * check if the striker has moved out of current shooting rect
+				 */
+				if (stY >= (shootingRect.bottom - striker.region.radius)) {
 					stY = currentPosition.y;
 				}
 			} else if (Board.BOTTOM_LEFT_HOLE == holeIndex
 					|| Board.BOTTOM_RIGHT_HOLE == holeIndex) {
 				stX = currentPosition.y - striker.region.radius / 2;
-				if (stY < (shootingRect.top + striker.region.radius)) {
+				/**
+				 * check if the striker has moved out of current shooting rect
+				 */
+				if (stY <= (shootingRect.top + striker.region.radius)) {
 					stY = currentPosition.y;
 				}
 
@@ -538,6 +554,7 @@ public class AIPlayerImpl extends AIPlayer {
 										vfCm.y, vfCm.x));
 
 					}
+
 					directShot = new Shot();
 					directShot.strikerX = stX;
 					directShot.strikerY = stY;
@@ -545,11 +562,12 @@ public class AIPlayerImpl extends AIPlayer {
 					directShot.v = strikerInitSpeedDirectShot;
 
 					shootingLine.rotateTo(shotAngle);
-					directShot.strikerVelocity = new Vector2f(
+					directShot.strikerVelocity = (new Vector2f(
 							shootingLine.getFinalX() - shootingLine.originX,
-							shootingLine.getFinalY() - shootingLine.originY);
+							shootingLine.getFinalY() - shootingLine.originY))
+							.unitVector();
 					directShot.strikerVelocity = directShot.strikerVelocity
-							.unitVector().mulScalar(strikerInitSpeedDirectShot);
+							.mulScalar(strikerInitSpeedDirectShot);
 
 					if (finalVfCm != null) {
 						line4 = new PolarLine(cmCopy.region.x, cmCopy.region.y,
@@ -590,12 +608,16 @@ public class AIPlayerImpl extends AIPlayer {
 			 */
 			pottableCm = pieceToReboundShotPolygonMap.keySet();
 			for (Piece cm : pottableCm) {
-				List<Polygon> ps = pieceToReboundShotPolygonMap.get(cm);
-				for (Polygon p : ps) {
+				List<Polygon> polygonSet = pieceToReboundShotPolygonMap.get(cm);
+				for (Polygon polygon : polygonSet) {
 					if (promisingShotFound)
 						break;
 
-					int holeIndex = p.tag;
+					/**
+					 * to which hole the current polygon points or where the
+					 * current cm can be potted
+					 */
+					int holeIndex = polygon.tag;
 					/**
 					 * get striker start position to hit the current c/m. On
 					 * this position striker is kept for the first time when
@@ -603,11 +625,15 @@ public class AIPlayerImpl extends AIPlayer {
 					 * Search radially first, if no optimal shot found, move the
 					 * striker away from the polygon rect to a new position.
 					 * Each position must be away from the previous by striker
-					 * radius(for no reason, just an assumption)
+					 * radius(for no reason, just to simplify calculation)
 					 */
 					strikerPos = getStrikerStartPosition(holeIndex,
-							aiPlayer.shootingRectIndex, p, board, striker);
+							aiPlayer.shootingRectIndex, polygon, board, striker);
 
+					/**
+					 * Find mirrored coordinates of hole and cm based on the
+					 * current shooting rect and hole
+					 */
 					Piece strikerCopy = new Piece(striker);
 					Piece cmCopy = new Piece(cm);
 					PointF mirroredCmPoint = null;
@@ -627,6 +653,7 @@ public class AIPlayerImpl extends AIPlayer {
 						mirroredCmPoint = UtilityFunctions.mirrorYaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.left);
+
 						mirroredHole = UtilityFunctions
 								.mirrorYaxis(board.holes[holeIndex].x,
 										board.holes[holeIndex].y,
@@ -636,6 +663,7 @@ public class AIPlayerImpl extends AIPlayer {
 						mirroredCmPoint = UtilityFunctions.mirrorXaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.bottom);
+
 						mirroredHole = UtilityFunctions.mirrorXaxis(
 								board.holes[holeIndex].x,
 								board.holes[holeIndex].y,
@@ -645,6 +673,7 @@ public class AIPlayerImpl extends AIPlayer {
 						mirroredCmPoint = UtilityFunctions.mirrorYaxis(
 								cmCopy.region.x, cmCopy.region.y,
 								board.boundsRect.right);
+
 						mirroredHole = UtilityFunctions.mirrorYaxis(
 								board.holes[holeIndex].x,
 								board.holes[holeIndex].y,
@@ -709,53 +738,57 @@ public class AIPlayerImpl extends AIPlayer {
 							// rotate shooting line
 							shootingLine.rotateBy(0.005f);
 
-//							testRect = makeRectFromLine(strikerPos.x,
-//									strikerPos.y, cmCopy.region.x,
-//									cmCopy.region.y, 2 * striker.region.radius);
-//
-//							for (Piece piece : allOnBoardPieces) {
-//								if (piece != cm) {
-//									Circle testCircle = new Circle(
-//											piece.region.radius, 0, 0);
-//									if (aiPlayer.shootingRectIndex == Board.BOTTOM_SHOOTING_RECT) {
-//										mirroredCmPoint = UtilityFunctions
-//												.mirrorXaxis(piece.region.x,
-//														piece.region.y,
-//														board.boundsRect.top);
-//									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
-//										mirroredCmPoint = UtilityFunctions
-//												.mirrorYaxis(piece.region.x,
-//														piece.region.y,
-//														board.boundsRect.left);
-//
-//									} else if (aiPlayer.shootingRectIndex == Board.TOP_SHOOTING_RECT) {
-//										mirroredCmPoint = UtilityFunctions
-//												.mirrorXaxis(piece.region.x,
-//														piece.region.y,
-//														board.boundsRect.bottom);
-//									} else if (aiPlayer.shootingRectIndex == Board.RIGHT_SHOOTING_RECT) {
-//										mirroredCmPoint = UtilityFunctions
-//												.mirrorYaxis(piece.region.x,
-//														piece.region.y,
-//														board.boundsRect.right);
-//
-//									}
-//									testCircle.x = mirroredCmPoint.x;
-//									testCircle.y = mirroredCmPoint.y;
-//
-//									if (UtilityFunctions
-//											.CirclePolygonIntersection(
-//													testRect, testCircle)) {
-//										intersectsWithOtherCm = true;
-//										break;
-//									}
-//								}
-//							}
-//
-//							if (intersectsWithOtherCm) {
-//								intersectsWithOtherCm = false;
-//								continue;
-//							}
+							// testRect = makeRectFromLine(strikerPos.x,
+							// strikerPos.y, cmCopy.region.x,
+							// cmCopy.region.y, 2 * striker.region.radius);
+							//
+							// for (Piece piece : allOnBoardPieces) {
+							// if (piece != cm) {
+							// Circle testCircle = new Circle(
+							// piece.region.radius, 0, 0);
+							// if (aiPlayer.shootingRectIndex ==
+							// Board.BOTTOM_SHOOTING_RECT) {
+							// mirroredCmPoint = UtilityFunctions
+							// .mirrorXaxis(piece.region.x,
+							// piece.region.y,
+							// board.boundsRect.top);
+							// } else if (aiPlayer.shootingRectIndex ==
+							// Board.RIGHT_SHOOTING_RECT) {
+							// mirroredCmPoint = UtilityFunctions
+							// .mirrorYaxis(piece.region.x,
+							// piece.region.y,
+							// board.boundsRect.left);
+							//
+							// } else if (aiPlayer.shootingRectIndex ==
+							// Board.TOP_SHOOTING_RECT) {
+							// mirroredCmPoint = UtilityFunctions
+							// .mirrorXaxis(piece.region.x,
+							// piece.region.y,
+							// board.boundsRect.bottom);
+							// } else if (aiPlayer.shootingRectIndex ==
+							// Board.RIGHT_SHOOTING_RECT) {
+							// mirroredCmPoint = UtilityFunctions
+							// .mirrorYaxis(piece.region.x,
+							// piece.region.y,
+							// board.boundsRect.right);
+							//
+							// }
+							// testCircle.x = mirroredCmPoint.x;
+							// testCircle.y = mirroredCmPoint.y;
+							//
+							// if (UtilityFunctions
+							// .CirclePolygonIntersection(
+							// testRect, testCircle)) {
+							// intersectsWithOtherCm = true;
+							// break;
+							// }
+							// }
+							// }
+							//
+							// if (intersectsWithOtherCm) {
+							// intersectsWithOtherCm = false;
+							// continue;
+							// }
 
 							// store final velocities
 							Vector2f vfStriker = new Vector2f(0, 0), vfCm = new Vector2f(
@@ -798,6 +831,7 @@ public class AIPlayerImpl extends AIPlayer {
 						reboundShot.strikerVelocity = new Vector2f(
 								shootingLine.getFinalX() - shootingLine.originX,
 								shootingLine.getFinalY() - shootingLine.originY);
+
 						reboundShot.strikerVelocity = reboundShot.strikerVelocity
 								.unitVector().mulScalar(
 										strikerInitSpeedReboundShot);
@@ -977,6 +1011,7 @@ public class AIPlayerImpl extends AIPlayer {
 		}
 
 		prevShot = shot;
+		Log.d(TAG, shot.toString());
 		return shot;
 	}
 

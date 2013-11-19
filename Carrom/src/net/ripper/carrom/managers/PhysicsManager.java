@@ -7,6 +7,7 @@ import java.util.Map;
 
 import net.ripper.carrom.managers.clients.IPhysicsManagerClient;
 import net.ripper.carrom.managers.physics.collisionResolver.CustomCollisionResolver;
+import net.ripper.carrom.managers.physics.ds.QuadTree;
 import net.ripper.carrom.model.CollisionPair;
 import net.ripper.carrom.model.Piece;
 import net.ripper.carrom.model.components.Vector2f;
@@ -25,9 +26,9 @@ public class PhysicsManager {
 
 	boolean paused = true;
 
-	public final float DAMPING = 0.985f;
-
 	private final float EPSILON = (float) 1e-9;
+
+	private QuadTree quadTree;
 
 	public PhysicsManager(Rect boundsRect) {
 		this.boundsRect = boundsRect;
@@ -35,6 +36,7 @@ public class PhysicsManager {
 		lastCollisionList = new ArrayList<CollisionPair>();
 		clients = new ArrayList<IPhysicsManagerClient>();
 		customCollisionResolversMap = new HashMap<Piece, CustomCollisionResolver>();
+		quadTree = new QuadTree(0, boundsRect);
 	}
 
 	public void registerClient(IPhysicsManagerClient client) {
@@ -83,7 +85,16 @@ public class PhysicsManager {
 	}
 
 	public float update() {
-		Piece pieceA, pieceB;
+		/**
+		 * Insert all pieces into the quad tree
+		 */
+		quadTree.clear();
+		for (Piece piece : pieces) {
+			if (piece.isVisible())
+				quadTree.insert(piece);
+		}
+
+		Piece pieceA;
 		float nextCollisionTime = 1;
 		if (!paused) {
 			for (int i = 0; i < pieces.size(); i++) {
@@ -91,10 +102,9 @@ public class PhysicsManager {
 				if (!pieceA.isVisible())
 					continue;
 
-				for (int j = i + 1; j < pieces.size(); j++) {
-					pieceB = pieces.get(j);
-					if (!pieceB.isVisible())
-						continue;
+				// get nearby pieces from the quad tree and test for collision
+				ArrayList<Piece> neighbors = quadTree.getNeighbors(pieceA);
+				for (Piece pieceB : neighbors) {
 
 					if (movingTowards(pieceA, pieceB)) {
 						if (isColliding(pieceA, pieceB)) {
@@ -235,19 +245,22 @@ public class PhysicsManager {
 	}
 
 	private boolean movingTowards(Piece a, Piece b) {
-		/* Position Vector dotted with the Relative Velocity Vector */
-		// position vector = (b.x - a.x),(b.y - a.y)
-		// Relative velocity vector : (a.vx - b.vx),(a.vy - b.vy)
-		// if pv . Rv > 0 then balls are moving towards each other
-		// elaborating, if angle between the vectors is acute
-		// (b2.x - b1.x) * (b1.vx - b2.vx) + (b2.y - b1.y) * (b1.vy - b2.vy)
+		/**
+		 * <pre>
+		 * Position Vector dotted with the Relative Velocity Vector 
+		 * 
+		 * position vector = (b.x - a.x),(b.y - a.y) 
+		 * Relative velocity vector : (a.vx - b.vx),(a.vy - b.vy) 
+		 * if pv . Rv > 0 then balls are moving towards each
+		 * other elaborating, 
+		 * if angle between the vectors is acute
+		 *  
+		 * (b2.x - b1.x) * (b1.vx - b2.vx) + (b2.y - b1.y) * (b1.vy - b2.vy)
+		 * </pre>
+		 */
 
 		return (b.region.x - a.region.x) * (a.velocity.x - b.velocity.x)
 				+ (b.region.y - a.region.y) * (a.velocity.y - b.velocity.y) > 0;
-		// Vector2f pv = new Vector2f(b.region.x - a.region.x, b.region.y
-		// - a.region.y);
-		// Vector2f rv = a.velocity.sub(b.velocity);
-		// return pv.dot(rv) > 0;
 	}
 
 	/**
@@ -305,7 +318,7 @@ public class PhysicsManager {
 			piece.region.y = piece.region.y + piece.velocity.y
 					* nextCollisionTime;
 
-			piece.velocity.scale(DAMPING);
+			piece.velocity.scale(piece.damping);
 
 			if (((int) piece.velocity.x) == 0 && ((int) piece.velocity.y) == 0) {
 				piece.velocity.x = 0;
@@ -341,12 +354,20 @@ public class PhysicsManager {
 		return false;
 	}
 
+	/**
+	 * if the square distance between the centers is less than the sum of the
+	 * radius, then colliding
+	 * 
+	 * @param pieceA
+	 * @param pieceB
+	 * @return
+	 */
 	public boolean isColliding(Piece pieceA, Piece pieceB) {
 		float sqDistance = UtilityFunctions.euclideanSqDistance(
 				pieceA.region.x, pieceA.region.y, pieceB.region.x,
 				pieceB.region.y);
 
-		if (sqDistance <= ((pieceA.region.radius + pieceB.region.radius + EPSILON) * (pieceA.region.radius
+		if (sqDistance < ((pieceA.region.radius + pieceB.region.radius + EPSILON) * (pieceA.region.radius
 				+ pieceB.region.radius + EPSILON)))
 			return true;
 		return false;

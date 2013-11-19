@@ -77,16 +77,16 @@ public class RenderThread extends Thread {
 				canvas = this.surfaceHolder.lockCanvas();
 
 				synchronized (surfaceHolder) {
-					gamePanel.onDraw(canvas);
 					t = gamePanel.update();
+					gamePanel.draw(canvas);
 				}
 
 				try {
-					Thread.sleep((long) (FRAME_PERIOD * t));
+					Thread.sleep((long) (FRAME_PERIOD));
 				} catch (InterruptedException ex) {
-					
+
 				}
-				
+
 				storeStats();
 			} finally {
 				// in case of an exception the surface is not left in
